@@ -12,6 +12,49 @@ interface KakaoMapProps {
   onMarkerClick: (store: Store) => void;
 }
 
+// Custom Marker SVGs (Encoded for usage)
+const STORE_MARKER_SRC = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40">
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.3"/>
+  </filter>
+  <g filter="url(#shadow)">
+    <path fill="#F59E0B" stroke="#92400E" stroke-width="2" d="M58,32c0-12-8-20-20-20C25,12,12,22,12,22s-4-4-8-4s-4,8,0,12s8,4,8,4s-2,16,12,20c12,3.5,34-2,34-22Z"/>
+    <circle cx="48" cy="24" r="2" fill="#78350F"/>
+    <path fill="none" stroke="#92400E" stroke-width="2" d="M40,20c0,0-4,4-4,10"/>
+    <path fill="none" stroke="#92400E" stroke-width="2" d="M30,22c0,0-4,4-4,10"/>
+    <path fill="none" stroke="#92400E" stroke-width="2" d="M20,24c0,0-4,4-4,10"/>
+  </g>
+</svg>`);
+
+const USER_MARKER_SRC = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 80" width="40" height="50">
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="2" dy="2" stdDeviation="1" flood-opacity="0.5"/>
+  </filter>
+  <g filter="url(#shadow)">
+    <path fill="#EF4444" d="M32,2C14.3,2,0,16.3,0,34c0,17.7,32,44,32,44s32-26.3,32-44C64,16.3,49.7,2,32,2z"/>
+    <circle cx="32" cy="34" r="14" fill="#FFFFFF"/>
+    <circle cx="27" cy="32" r="2.5" fill="#1F2937"/>
+    <circle cx="37" cy="32" r="2.5" fill="#1F2937"/>
+    <path fill="none" stroke="#1F2937" stroke-width="2.5" stroke-linecap="round" d="M27,40c2,2.5,6,2.5,10,0"/>
+  </g>
+</svg>`);
+
+const ADD_MARKER_SRC = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40">
+  <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+    <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+    <feMerge>
+      <feMergeNode in="coloredBlur"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+  </filter>
+  <g filter="url(#glow)">
+    <path fill="#EAB308" stroke="#FFFFFF" stroke-width="3" d="M32,4L39,22L58,22L44,34L49,52L32,42L15,52L20,34L6,22L25,22Z"/>
+  </g>
+</svg>`);
+
 export const KakaoMap: React.FC<KakaoMapProps> = ({
   center,
   stores,
@@ -26,6 +69,18 @@ export const KakaoMap: React.FC<KakaoMapProps> = ({
   const markersRef = useRef<any[]>([]);
   const tempMarkerRef = useRef<any>(null);
   const userMarkerRef = useRef<any>(null);
+
+  // Refs to hold latest callbacks to avoid stale closures
+  const onMapClickRef = useRef(onMapClick);
+  const onMarkerClickRef = useRef(onMarkerClick);
+
+  useEffect(() => {
+    onMapClickRef.current = onMapClick;
+  }, [onMapClick]);
+
+  useEffect(() => {
+    onMarkerClickRef.current = onMarkerClick;
+  }, [onMarkerClick]);
 
   // Initialize Map
   useEffect(() => {
@@ -48,10 +103,13 @@ export const KakaoMap: React.FC<KakaoMapProps> = ({
     // Click listener
     window.kakao.maps.event.addListener(map, 'click', (mouseEvent: any) => {
       const latlng = mouseEvent.latLng;
-      onMapClick({
-        lat: latlng.getLat(),
-        lng: latlng.getLng()
-      });
+      // Use ref to access current props
+      if (onMapClickRef.current) {
+        onMapClickRef.current({
+          lat: latlng.getLat(),
+          lng: latlng.getLng()
+        });
+      }
     });
 
   }, []); 
@@ -76,10 +134,10 @@ export const KakaoMap: React.FC<KakaoMapProps> = ({
     if (userLocation) {
         const position = new window.kakao.maps.LatLng(userLocation.lat, userLocation.lng);
         
-        // Red marker for user to distinguish from stores
-        const imageSrc = "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png"; 
-        const imageSize = new window.kakao.maps.Size(24, 35); 
-        const markerImage = new window.kakao.maps.MarkerImage(imageSrc, imageSize); 
+        // Custom User Marker
+        const imageSize = new window.kakao.maps.Size(40, 50); 
+        const imageOption = { offset: new window.kakao.maps.Point(20, 50) };
+        const markerImage = new window.kakao.maps.MarkerImage(USER_MARKER_SRC, imageSize, imageOption); 
 
         const marker = new window.kakao.maps.Marker({
             position: position,
@@ -104,22 +162,29 @@ export const KakaoMap: React.FC<KakaoMapProps> = ({
     stores.forEach(store => {
       const position = new window.kakao.maps.LatLng(store.lat, store.lng);
       
-      // Default Blue marker for stores
+      // Custom Fish Marker for stores
+      const imageSize = new window.kakao.maps.Size(40, 40); 
+      const imageOption = { offset: new window.kakao.maps.Point(20, 20) };
+      const markerImage = new window.kakao.maps.MarkerImage(STORE_MARKER_SRC, imageSize, imageOption);
+
       const marker = new window.kakao.maps.Marker({
         position: position,
         map: mapInstance,
+        image: markerImage,
         title: store.name
       });
 
       // Add click listener
       window.kakao.maps.event.addListener(marker, 'click', () => {
-        onMarkerClick(store);
+        if (onMarkerClickRef.current) {
+            onMarkerClickRef.current(store);
+        }
       });
 
       markersRef.current.push(marker);
     });
 
-  }, [mapInstance, stores, onMarkerClick]);
+  }, [mapInstance, stores]); // onMarkerClick removed from deps, using ref
 
   // Handle "Adding Mode" temporary marker
   useEffect(() => {
@@ -133,19 +198,21 @@ export const KakaoMap: React.FC<KakaoMapProps> = ({
     if (isAddingMode && selectedLocation) {
       const position = new window.kakao.maps.LatLng(selectedLocation.lat, selectedLocation.lng);
       
-      // Yellow Star for the "New Store" marker
-      const imageSrc = "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png"; 
-      const imageSize = new window.kakao.maps.Size(24, 35); 
-      const markerImage = new window.kakao.maps.MarkerImage(imageSrc, imageSize); 
+      // Custom Star Marker for Selection
+      const imageSize = new window.kakao.maps.Size(40, 40); 
+      const imageOption = { offset: new window.kakao.maps.Point(20, 20) };
+      const markerImage = new window.kakao.maps.MarkerImage(ADD_MARKER_SRC, imageSize, imageOption);
 
       const marker = new window.kakao.maps.Marker({
         position: position,
         map: mapInstance,
-        image: markerImage
+        image: markerImage,
+        zIndex: 3 // Show above others
       });
 
       tempMarkerRef.current = marker;
-      mapInstance.panTo(position);
+      // Optionally pan to selection
+      // mapInstance.panTo(position); 
     }
   }, [mapInstance, isAddingMode, selectedLocation]);
 
