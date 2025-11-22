@@ -65,7 +65,7 @@ export default function App() {
     } else {
       setCurrentLocation({ lat: 37.5665, lng: 126.9780 });
     }
-  }, [user]); // Refetch if user logs in (though main logic is covered by conditional render)
+  }, [user]);
 
   // Fetch reviews when a store is selected
   useEffect(() => {
@@ -95,19 +95,21 @@ export default function App() {
     }
   };
 
-  const handleAddStoreSubmit = async (data: Omit<Store, 'id' | 'createdAt' | 'lat' | 'lng'>) => {
-    if (!newStoreLocation) return;
+  const handleAddStoreSubmit = async (data: Omit<Store, 'id' | 'createdAt' | 'lat' | 'lng' | 'userId'>) => {
+    if (!newStoreLocation || !user) return;
     try {
-      const newId = await addStore({
+      const storeData = {
         ...data,
         lat: newStoreLocation.lat,
         lng: newStoreLocation.lng,
-      });
+        userId: user.uid
+      };
+      
+      const newId = await addStore(storeData);
+      
       const newStore: Store = {
         id: newId,
-        ...data,
-        lat: newStoreLocation.lat,
-        lng: newStoreLocation.lng,
+        ...storeData,
         createdAt: Date.now(),
       };
       setStores([...stores, newStore]);
@@ -115,25 +117,30 @@ export default function App() {
       setNewStoreLocation(null);
       setSelectedStore(newStore);
     } catch (e) {
+      console.error(e);
       alert("가게 등록에 실패했습니다.");
     }
   };
 
-  const handleAddReviewSubmit = async (data: Omit<Review, 'id' | 'createdAt' | 'storeId'>) => {
-    if (!selectedStore) return;
+  const handleAddReviewSubmit = async (data: Omit<Review, 'id' | 'createdAt' | 'storeId' | 'userId'>) => {
+    if (!selectedStore || !user) return;
     try {
-      const newReviewId = await addReview({
+      const reviewData = {
         ...data,
-        storeId: selectedStore.id
-      });
+        storeId: selectedStore.id,
+        userId: user.uid
+      };
+      
+      const newReviewId = await addReview(reviewData);
+      
       const newReview: Review = {
         id: newReviewId,
-        storeId: selectedStore.id,
-        ...data,
+        ...reviewData,
         createdAt: Date.now()
       };
       setReviews([newReview, ...reviews]);
     } catch (e) {
+      console.error(e);
       alert("리뷰 등록에 실패했습니다.");
     }
   };
@@ -220,11 +227,11 @@ export default function App() {
               reviews={reviews} 
               onBack={() => setSelectedStore(null)}
               onAddReview={handleAddReviewSubmit}
+              currentUser={user}
             />
           ) : (
             <Sidebar stores={stores} onSelectStore={(s) => {
               setSelectedStore(s);
-              // In a real app, we would pan the map here via ref
             }} />
           )}
         </div>

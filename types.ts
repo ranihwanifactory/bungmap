@@ -8,6 +8,7 @@ export interface Store {
   priceInfo: string;
   paymentMethods: string[]; // e.g. ['cash', 'card', 'transfer']
   createdAt: number;
+  userId: string;
 }
 
 export interface Review {
@@ -17,6 +18,7 @@ export interface Review {
   rating: number;
   comment: string;
   createdAt: number;
+  userId: string;
 }
 
 export interface LatLng {

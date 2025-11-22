@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Store, Review } from '../types';
 import { ArrowLeft, Star, Clock, MapPin, Wallet } from 'lucide-react';
 
@@ -7,13 +7,22 @@ interface StoreDetailProps {
   reviews: Review[];
   onBack: () => void;
   onAddReview: (review: any) => void;
+  currentUser: any;
 }
 
-export const StoreDetail: React.FC<StoreDetailProps> = ({ store, reviews, onBack, onAddReview }) => {
+export const StoreDetail: React.FC<StoreDetailProps> = ({ store, reviews, onBack, onAddReview, currentUser }) => {
   const [isReviewing, setIsReviewing] = useState(false);
   const [nickname, setNickname] = useState('');
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
+
+  useEffect(() => {
+    if (currentUser) {
+        // Pre-fill nickname with display name or part of email
+        const defaultName = currentUser.displayName || currentUser.email?.split('@')[0] || '';
+        setNickname(defaultName);
+    }
+  }, [currentUser]);
 
   const categoryLabel = {
     redbean: '팥',
@@ -33,7 +42,7 @@ export const StoreDetail: React.FC<StoreDetailProps> = ({ store, reviews, onBack
     e.preventDefault();
     onAddReview({ nickname, rating, comment });
     setIsReviewing(false);
-    setNickname('');
+    // Don't clear nickname to keep user preference, or reset to default
     setComment('');
     setRating(5);
   };

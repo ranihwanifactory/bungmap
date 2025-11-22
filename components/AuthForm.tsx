@@ -46,7 +46,11 @@ export const AuthForm = () => {
       await signInWithPopup(auth, googleProvider);
     } catch (err: any) {
       console.error(err);
-      setError('구글 로그인 중 오류가 발생했습니다.');
+      if (err.code === 'auth/unauthorized-domain') {
+        setError('Firebase Console에서 현재 도메인을 승인해야 합니다.');
+      } else {
+        setError('구글 로그인 중 오류가 발생했습니다.');
+      }
     }
   };
 
