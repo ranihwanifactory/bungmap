@@ -5,7 +5,7 @@ import { StoreForm } from './components/StoreForm';
 import { StoreDetail } from './components/StoreDetail';
 import { AuthForm } from './components/AuthForm';
 import { Store, Review, LatLng } from './types';
-import { getStores, addStore, getReviews, addReview } from './services/firebaseService';
+import { getStores, addStore, getReviews, addReview, updateStore, deleteStore } from './services/firebaseService';
 import { auth } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { Plus, Fish, LogOut, AlertTriangle } from 'lucide-react';
@@ -15,10 +15,17 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
 
   const [stores, setStores] = useState<Store[]>([]);
+  
+  // UI States
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [isAddingStore, setIsAddingStore] = useState(false);
+  const [isEditingStore, setIsEditingStore] = useState(false); // New: Editing State
+  
+  // Location States
   const [newStoreLocation, setNewStoreLocation] = useState<LatLng | null>(null);
   const [currentLocation, setCurrentLocation] = useState<LatLng | null>(null);
+  const [mapCenter, setMapCenter] = useState<LatLng>({ lat: 37.5665, lng: 126.9780 }); // New: Explicit Map Center
+  
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -59,18 +66,17 @@ export default function App() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setCurrentLocation({
+          const userPos = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
-          });
+          };
+          setCurrentLocation(userPos);
+          setMapCenter(userPos); // Move map to user initially
         },
         () => {
-          // Default to Seoul if permission denied
-          setCurrentLocation({ lat: 37.5665, lng: 126.9780 });
+          // Default to Seoul if permission denied (already set in default state)
         }
       );
-    } else {
-      setCurrentLocation({ lat: 37.5665, lng: 126.9780 });
     }
   }, [user]);
 
@@ -95,14 +101,22 @@ export default function App() {
     if (isAddingStore) {
       setNewStoreLocation(latlng);
     } else {
-      setSelectedStore(null);
+      // Do nothing if just viewing
     }
+  };
+
+  // Helper to select a store and move map
+  const handleSelectStore = (store: Store) => {
+    setSelectedStore(store);
+    setMapCenter({ lat: store.lat, lng: store.lng }); // Pan map to store
+    setIsAddingStore(false);
+    setIsEditingStore(false);
+    setNewStoreLocation(null);
   };
 
   const handleMarkerClick = (store: Store) => {
     if (!isAddingStore) {
-      setSelectedStore(store);
-      setNewStoreLocation(null);
+      handleSelectStore(store);
     }
   };
 
@@ -124,9 +138,9 @@ export default function App() {
         createdAt: Date.now(),
       };
       setStores([...stores, newStore]);
-      setIsAddingStore(false);
-      setNewStoreLocation(null);
-      setSelectedStore(newStore);
+      
+      // Select the new store and move map
+      handleSelectStore(newStore);
     } catch (e: any) {
       console.error(e);
       if (e.code === 'permission-denied' || e.message?.includes('Missing or insufficient permissions')) {
@@ -136,6 +150,35 @@ export default function App() {
          alert("가게 등록에 실패했습니다.");
       }
     }
+  };
+
+  const handleUpdateStoreSubmit = async (data: Partial<Store>) => {
+      if (!selectedStore) return;
+      try {
+          await updateStore(selectedStore.id, data);
+          
+          const updatedStore = { ...selectedStore, ...data };
+          setStores(stores.map(s => s.id === updatedStore.id ? updatedStore : s));
+          setSelectedStore(updatedStore);
+          setIsEditingStore(false);
+          alert("수정이 완료되었습니다.");
+      } catch (e) {
+          console.error(e);
+          alert("수정에 실패했습니다.");
+      }
+  };
+
+  const handleDeleteStore = async (store: Store) => {
+      if (!window.confirm(`'${store.name}' 가게를 정말 삭제하시겠습니까?`)) return;
+      try {
+          await deleteStore(store.id);
+          setStores(stores.filter(s => s.id !== store.id));
+          setSelectedStore(null);
+          alert("삭제되었습니다.");
+      } catch (e) {
+          console.error(e);
+          alert("삭제에 실패했습니다.");
+      }
   };
 
   const handleAddReviewSubmit = async (data: Omit<Review, 'id' | 'createdAt' | 'storeId' | 'userId'>) => {
@@ -211,6 +254,7 @@ export default function App() {
               setIsAddingStore(!isAddingStore);
               setSelectedStore(null);
               setNewStoreLocation(null);
+              setIsEditingStore(false);
             }}
             className={`p-2 rounded-full shadow-lg transition-all ${isAddingStore ? 'bg-red-500 text-white' : 'bg-bung-800 text-white'}`}
           >
@@ -221,7 +265,7 @@ export default function App() {
 
       {/* Sidebar (Left Panel) */}
       <div className={`absolute md:relative z-20 md:z-0 w-full md:w-[400px] h-[50vh] md:h-full bottom-0 md:bottom-auto bg-white shadow-2xl transition-transform duration-300 transform 
-        ${selectedStore || isAddingStore ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}
+        ${(selectedStore || isAddingStore) ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}
         md:translate-x-0 flex flex-col border-r border-bung-200
       `}>
         {/* Desktop Header */}
@@ -250,6 +294,13 @@ export default function App() {
               onSubmit={handleAddStoreSubmit} 
               onCancel={() => setIsAddingStore(false)} 
             />
+          ) : isEditingStore && selectedStore ? (
+            <StoreForm
+              locationSelected={true} // Location is already known for existing store
+              initialData={selectedStore}
+              onSubmit={handleUpdateStoreSubmit}
+              onCancel={() => setIsEditingStore(false)}
+            />
           ) : selectedStore ? (
             <StoreDetail 
               store={selectedStore} 
@@ -257,11 +308,11 @@ export default function App() {
               onBack={() => setSelectedStore(null)}
               onAddReview={handleAddReviewSubmit}
               currentUser={user}
+              onEdit={() => setIsEditingStore(true)}
+              onDelete={handleDeleteStore}
             />
           ) : (
-            <Sidebar stores={stores} onSelectStore={(s) => {
-              setSelectedStore(s);
-            }} />
+            <Sidebar stores={stores} onSelectStore={handleSelectStore} />
           )}
         </div>
 
@@ -289,7 +340,7 @@ export default function App() {
         )}
 
         <KakaoMap
-          center={currentLocation || { lat: 37.5665, lng: 126.9780 }}
+          center={mapCenter}
           stores={stores}
           isAddingMode={isAddingStore}
           selectedLocation={newStoreLocation}

@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, getDocs, addDoc, query, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs, addDoc, query, where, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Store, Review } from '../types';
 
 const STORES_COLLECTION = 'stores';
@@ -21,6 +21,16 @@ export const addStore = async (storeData: Omit<Store, 'id' | 'createdAt'>): Prom
     createdAt: Date.now()
   });
   return docRef.id;
+};
+
+export const updateStore = async (storeId: string, data: Partial<Store>): Promise<void> => {
+  const storeRef = doc(db, STORES_COLLECTION, storeId);
+  await updateDoc(storeRef, data);
+};
+
+export const deleteStore = async (storeId: string): Promise<void> => {
+  const storeRef = doc(db, STORES_COLLECTION, storeId);
+  await deleteDoc(storeRef);
 };
 
 export const getReviews = async (storeId: string): Promise<Review[]> => {

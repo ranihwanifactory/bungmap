@@ -1,24 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { Store, Review } from '../types';
-import { ArrowLeft, Star, Clock, MapPin, Wallet } from 'lucide-react';
+import { ArrowLeft, Star, Wallet, Pencil, Trash2 } from 'lucide-react';
 
 interface StoreDetailProps {
   store: Store;
   reviews: Review[];
   onBack: () => void;
   onAddReview: (review: any) => void;
+  onEdit: (store: Store) => void;
+  onDelete: (store: Store) => void;
   currentUser: any;
 }
 
-export const StoreDetail: React.FC<StoreDetailProps> = ({ store, reviews, onBack, onAddReview, currentUser }) => {
+export const StoreDetail: React.FC<StoreDetailProps> = ({ 
+  store, 
+  reviews, 
+  onBack, 
+  onAddReview, 
+  onEdit,
+  onDelete,
+  currentUser 
+}) => {
   const [isReviewing, setIsReviewing] = useState(false);
   const [nickname, setNickname] = useState('');
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
 
+  const isOwner = currentUser && store.userId === currentUser.uid;
+
   useEffect(() => {
     if (currentUser) {
-        // Pre-fill nickname with display name or part of email
         const defaultName = currentUser.displayName || currentUser.email?.split('@')[0] || '';
         setNickname(defaultName);
     }
@@ -42,7 +53,6 @@ export const StoreDetail: React.FC<StoreDetailProps> = ({ store, reviews, onBack
     e.preventDefault();
     onAddReview({ nickname, rating, comment });
     setIsReviewing(false);
-    // Don't clear nickname to keep user preference, or reset to default
     setComment('');
     setRating(5);
   };
@@ -53,9 +63,30 @@ export const StoreDetail: React.FC<StoreDetailProps> = ({ store, reviews, onBack
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      <button onClick={onBack} className="flex items-center text-bung-700 hover:text-bung-900 font-medium mb-2">
-        <ArrowLeft className="w-4 h-4 mr-1" /> 돌아가기
-      </button>
+      <div className="flex items-center justify-between mb-2">
+        <button onClick={onBack} className="flex items-center text-bung-700 hover:text-bung-900 font-medium">
+          <ArrowLeft className="w-4 h-4 mr-1" /> 돌아가기
+        </button>
+        
+        {isOwner && (
+          <div className="flex gap-2">
+            <button 
+              onClick={() => onEdit(store)}
+              className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+              title="수정"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => onDelete(store)}
+              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+              title="삭제"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Header Info */}
       <div className="bg-bung-50 p-6 rounded-2xl border border-bung-100 shadow-sm">
