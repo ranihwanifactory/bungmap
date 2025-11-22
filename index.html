@@ -37,7 +37,7 @@
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/743/743231.png">
     
     <!-- PWA Manifest (Data URI) -->
-    <link rel="manifest" href='data:application/manifest+json,{"short_name":"붕맵","name":"붕맵 - 붕어빵 지도","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/743/743231.png","type":"image/png","sizes":"192x192"},{"src":"https://cdn-icons-png.flaticon.com/512/743/743231.png","type":"image/png","sizes":"512x512"}],"start_url":".","display":"standalone","theme_color":"#ffc857","background_color":"#fffbf0"}'>
+    <link rel="manifest" href='data:application/manifest+json,{"short_name":"붕맵","name":"붕맵 - 붕어빵 지도","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/743/743231.png","type":"image/png","sizes":"192x192","purpose":"any maskable"},{"src":"https://cdn-icons-png.flaticon.com/512/743/743231.png","type":"image/png","sizes":"512x512","purpose":"any maskable"}],"start_url":".","display":"standalone","theme_color":"#ffc857","background_color":"#fffbf0","orientation":"portrait"}'>
 
     <!-- Structured Data (JSON-LD) for Google -->
     <script type="application/ld+json">
@@ -97,8 +97,12 @@
             self.addEventListener('install', (event) => {
               self.skipWaiting();
             });
+            self.addEventListener('activate', (event) => {
+              event.waitUntil(clients.claim());
+            });
             self.addEventListener('fetch', (event) => {
-              // Passthrough
+              // Passthrough: A fetch handler is required for PWA installability criteria
+              // even if it does not cache anything aggressively.
             });
           `;
           const blob = new Blob([swCode], {type: 'application/javascript'});

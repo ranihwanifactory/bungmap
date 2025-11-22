@@ -307,6 +307,16 @@ export default function App() {
           <span>붕맵</span>
         </div>
         <div className="flex items-center gap-2">
+          {/* Mobile PWA Install Button */}
+          {deferredPrompt && (
+            <button
+              onClick={() => setShowInstallModal(true)}
+              className="p-2 rounded-full bg-bung-100 text-bung-800 hover:bg-bung-200 transition-colors"
+              title="앱 설치하기"
+            >
+              <Download className="w-5 h-5" />
+            </button>
+          )}
           <button
             onClick={handleLogout}
             className="p-2 rounded-full bg-bung-200 text-bung-800 hover:bg-bung-400 transition-colors"
@@ -336,13 +346,25 @@ export default function App() {
             <Fish className="w-10 h-10 text-bung-900 fill-bung-700" />
             <h1 className="text-2xl font-black text-bung-900 tracking-tight">붕맵 <span className="text-base font-normal opacity-80">Bungeoppang Map</span></h1>
           </div>
-          <button
-            onClick={handleLogout}
-            className="p-2 rounded-full hover:bg-bung-400/50 text-bung-900 transition-colors"
-            title="로그아웃"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Desktop PWA Install Button */}
+            {deferredPrompt && (
+               <button
+               onClick={() => setShowInstallModal(true)}
+               className="flex items-center gap-2 px-3 py-2 rounded-full bg-bung-100 text-bung-900 hover:bg-bung-200 font-bold text-xs transition-colors mr-2"
+             >
+               <Download className="w-4 h-4" />
+               앱 설치
+             </button>
+            )}
+            <button
+                onClick={handleLogout}
+                className="p-2 rounded-full hover:bg-bung-400/50 text-bung-900 transition-colors"
+                title="로그아웃"
+            >
+                <LogOut className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar pb-24 md:pb-4">
