@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BungMap - 붕어빵 지도</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              bung: {
+                50: '#fffbf0',
+                100: '#ffefc2',
+                200: '#ffe094',
+                300: '#ffc857', // Main Gold
+                400: '#ffb02e',
+                500: '#f59e0b',
+                600: '#d97706',
+                700: '#b45309', // Pastry Brown
+                800: '#92400e',
+                900: '#78350f',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <!-- 
+      IMPORTANT: REPLACE 'YOUR_KAKAO_MAP_API_KEY' WITH A VALID KAKAO JAVASCRIPT KEY 
+      Get it from: https://developers.kakao.com/
+    -->
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=08318a127595566819a1c38d00deaab2&libraries=services,clusterer"></script>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-bung-50 text-slate-800">
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "name": "BungMap - 붕어빵 지도",
+  "description": "Find and share the best Bungeoppang (fish-shaped pastry) spots near you.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
