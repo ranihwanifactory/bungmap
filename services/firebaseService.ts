@@ -34,21 +34,20 @@ export const deleteStore = async (storeId: string): Promise<void> => {
 };
 
 export const getReviews = async (storeId: string): Promise<Review[]> => {
-  // NOTE: Changed to client-side sorting to avoid "Missing Index" errors in Firestore
-  // when combining where() and orderBy().
+  // Use orderBy to sort by date on the server side.
+  // NOTE: This requires a Composite Index in Firestore (storeId ASC, createdAt DESC).
+  // Check the browser console for the link to create this index automatically.
   const q = query(
     collection(db, REVIEWS_COLLECTION),
-    where('storeId', '==', storeId)
+    where('storeId', '==', storeId),
+    orderBy('createdAt', 'desc')
   );
   
   const querySnapshot = await getDocs(q);
-  const reviews = querySnapshot.docs.map(doc => ({
+  return querySnapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data()
   } as Review));
-
-  // Sort by createdAt desc (newest first) in memory
-  return reviews.sort((a, b) => b.createdAt - a.createdAt);
 };
 
 export const addReview = async (reviewData: Omit<Review, 'id' | 'createdAt'>): Promise<string> => {
@@ -57,4 +56,14 @@ export const addReview = async (reviewData: Omit<Review, 'id' | 'createdAt'>): P
     createdAt: Date.now()
   });
   return docRef.id;
+};
+
+export const updateReview = async (reviewId: string, data: Partial<Review>): Promise<void> => {
+  const reviewRef = doc(db, REVIEWS_COLLECTION, reviewId);
+  await updateDoc(reviewRef, data);
+};
+
+export const deleteReview = async (reviewId: string): Promise<void> => {
+  const reviewRef = doc(db, REVIEWS_COLLECTION, reviewId);
+  await deleteDoc(reviewRef);
 };
