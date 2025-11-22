@@ -8,7 +8,7 @@ import { Store, Review, LatLng } from './types';
 import { getStores, addStore, getReviews, addReview } from './services/firebaseService';
 import { auth } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { MapPin, Plus, Fish, LogOut } from 'lucide-react';
+import { Plus, Fish, LogOut, AlertTriangle } from 'lucide-react';
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
@@ -21,6 +21,9 @@ export default function App() {
   const [currentLocation, setCurrentLocation] = useState<LatLng | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // New state for permission errors
+  const [permissionError, setPermissionError] = useState(false);
 
   // Auth State Listener
   useEffect(() => {
@@ -39,8 +42,12 @@ export default function App() {
       try {
         const data = await getStores();
         setStores(data);
-      } catch (error) {
+        setPermissionError(false);
+      } catch (error: any) {
         console.error("Error fetching stores:", error);
+        if (error.code === 'permission-denied' || error.message?.includes('Missing or insufficient permissions')) {
+          setPermissionError(true);
+        }
       } finally {
         setLoading(false);
       }
@@ -71,8 +78,12 @@ export default function App() {
   useEffect(() => {
     if (selectedStore) {
       const fetchReviews = async () => {
-        const data = await getReviews(selectedStore.id);
-        setReviews(data);
+        try {
+            const data = await getReviews(selectedStore.id);
+            setReviews(data);
+        } catch (error: any) {
+            console.error("Error fetching reviews:", error);
+        }
       };
       fetchReviews();
     } else {
@@ -116,9 +127,14 @@ export default function App() {
       setIsAddingStore(false);
       setNewStoreLocation(null);
       setSelectedStore(newStore);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("가게 등록에 실패했습니다.");
+      if (e.code === 'permission-denied' || e.message?.includes('Missing or insufficient permissions')) {
+         alert("데이터베이스 권한 오류입니다. Firebase Console에서 Firestore 규칙을 확인해주세요.");
+         setPermissionError(true);
+      } else {
+         alert("가게 등록에 실패했습니다.");
+      }
     }
   };
 
@@ -139,7 +155,7 @@ export default function App() {
         createdAt: Date.now()
       };
       setReviews([newReview, ...reviews]);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       alert("리뷰 등록에 실패했습니다.");
     }
@@ -164,6 +180,19 @@ export default function App() {
   return (
     <div className="relative w-full h-screen overflow-hidden flex flex-col md:flex-row bg-bung-50">
       
+      {/* Permission Error Banner */}
+      {permissionError && (
+        <div className="absolute top-0 left-0 w-full bg-red-600 text-white z-50 p-3 flex items-center justify-center shadow-lg animate-bounce">
+            <AlertTriangle className="w-6 h-6 mr-2" />
+            <div className="text-sm font-medium">
+                <strong>데이터베이스 권한 오류:</strong> Firebase Console &gt; Firestore Database &gt; [규칙] 탭에서 
+                <code className="bg-red-800 px-2 py-0.5 rounded mx-1">allow read, write: if request.auth != null;</code>
+                로 설정해주세요.
+            </div>
+            <button onClick={() => window.location.reload()} className="ml-4 underline text-xs">새로고침</button>
+        </div>
+      )}
+
       {/* Mobile Header */}
       <div className="md:hidden bg-bung-300 p-4 flex items-center justify-between shadow-md z-20">
         <div className="flex items-center gap-2 text-bung-900 font-bold text-xl">

@@ -45,11 +45,13 @@ export const AuthForm = () => {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err: any) {
-      console.error(err);
+      console.error("Login Error:", err);
       if (err.code === 'auth/unauthorized-domain') {
-        setError('Firebase Console에서 현재 도메인을 승인해야 합니다.');
+        setError('도메인 승인 필요: Firebase Console > Authentication > Settings > Authorized domains에 현재 도메인을 추가해주세요.');
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        setError('로그인 창이 닫혔습니다.');
       } else {
-        setError('구글 로그인 중 오류가 발생했습니다.');
+        setError('구글 로그인 중 오류가 발생했습니다. (' + err.code + ')');
       }
     }
   };
@@ -104,7 +106,7 @@ export const AuthForm = () => {
             />
           </div>
 
-          {error && <div className="bg-red-50 text-red-500 text-xs p-3 rounded-lg font-medium text-center animate-pulse">{error}</div>}
+          {error && <div className="bg-red-50 text-red-600 text-xs p-3 rounded-lg font-medium text-center animate-pulse break-words">{error}</div>}
 
           <button
             type="submit"
