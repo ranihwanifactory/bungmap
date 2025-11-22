@@ -7,6 +7,7 @@ interface KakaoMapProps {
   stores: Store[];
   isAddingMode: boolean;
   selectedLocation: LatLng | null;
+  userLocation: LatLng | null;
   onMapClick: (location: LatLng) => void;
   onMarkerClick: (store: Store) => void;
 }
@@ -16,6 +17,7 @@ export const KakaoMap: React.FC<KakaoMapProps> = ({
   stores,
   isAddingMode,
   selectedLocation,
+  userLocation,
   onMapClick,
   onMarkerClick
 }) => {
@@ -23,6 +25,7 @@ export const KakaoMap: React.FC<KakaoMapProps> = ({
   const [mapInstance, setMapInstance] = useState<any>(null);
   const markersRef = useRef<any[]>([]);
   const tempMarkerRef = useRef<any>(null);
+  const userMarkerRef = useRef<any>(null);
 
   // Initialize Map
   useEffect(() => {
@@ -51,9 +54,45 @@ export const KakaoMap: React.FC<KakaoMapProps> = ({
       });
     });
 
-  }, []); // Run once on mount (technically dependency on center could trigger re-render but we want to keep map stable)
+  }, []); 
 
-  // Update Markers when stores change
+  // Handle Map Center Update (e.g. when geolocation resolves)
+  useEffect(() => {
+    if(mapInstance && center) {
+        const moveLatLon = new window.kakao.maps.LatLng(center.lat, center.lng);
+        mapInstance.panTo(moveLatLon);
+    }
+  }, [center, mapInstance]);
+
+  // Update User Marker
+  useEffect(() => {
+    if (!mapInstance) return;
+
+    if (userMarkerRef.current) {
+        userMarkerRef.current.setMap(null);
+        userMarkerRef.current = null;
+    }
+
+    if (userLocation) {
+        const position = new window.kakao.maps.LatLng(userLocation.lat, userLocation.lng);
+        
+        // Red marker for user to distinguish from stores
+        const imageSrc = "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png"; 
+        const imageSize = new window.kakao.maps.Size(24, 35); 
+        const markerImage = new window.kakao.maps.MarkerImage(imageSrc, imageSize); 
+
+        const marker = new window.kakao.maps.Marker({
+            position: position,
+            map: mapInstance,
+            image: markerImage,
+            title: "내 위치"
+        });
+        
+        userMarkerRef.current = marker;
+    }
+  }, [mapInstance, userLocation]);
+
+  // Update Store Markers when stores change
   useEffect(() => {
     if (!mapInstance) return;
 
@@ -65,7 +104,7 @@ export const KakaoMap: React.FC<KakaoMapProps> = ({
     stores.forEach(store => {
       const position = new window.kakao.maps.LatLng(store.lat, store.lng);
       
-      // Basic marker image could be customized here
+      // Default Blue marker for stores
       const marker = new window.kakao.maps.Marker({
         position: position,
         map: mapInstance,
@@ -94,7 +133,7 @@ export const KakaoMap: React.FC<KakaoMapProps> = ({
     if (isAddingMode && selectedLocation) {
       const position = new window.kakao.maps.LatLng(selectedLocation.lat, selectedLocation.lng);
       
-      // Use a different image or style for the "New" marker
+      // Yellow Star for the "New Store" marker
       const imageSrc = "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png"; 
       const imageSize = new window.kakao.maps.Size(24, 35); 
       const markerImage = new window.kakao.maps.MarkerImage(imageSrc, imageSize); 

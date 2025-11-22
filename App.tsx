@@ -264,6 +264,7 @@ export default function App() {
           stores={stores}
           isAddingMode={isAddingStore}
           selectedLocation={newStoreLocation}
+          userLocation={currentLocation}
           onMapClick={handleMapClick}
           onMarkerClick={handleMarkerClick}
         />
