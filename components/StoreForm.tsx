@@ -1,22 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Store } from '../types';
-import { DollarSign } from 'lucide-react';
+import { Fish, DollarSign, CreditCard } from 'lucide-react';
 
 interface StoreFormProps {
   locationSelected: boolean;
   onSubmit: (data: any) => void;
   onCancel: () => void;
-  initialData?: Store;
 }
 
-export const StoreForm: React.FC<StoreFormProps> = ({ locationSelected, onSubmit, onCancel, initialData }) => {
-  const [name, setName] = useState(initialData?.name || '');
-  const [description, setDescription] = useState(initialData?.description || '');
-  const [category, setCategory] = useState<Store['category']>(initialData?.category || 'redbean');
-  const [priceInfo, setPriceInfo] = useState(initialData?.priceInfo || '');
-  const [paymentMethods, setPaymentMethods] = useState<string[]>(initialData?.paymentMethods || []);
-
-  const isEditing = !!initialData;
+export const StoreForm: React.FC<StoreFormProps> = ({ locationSelected, onSubmit, onCancel }) => {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState<Store['category']>('redbean');
+  const [priceInfo, setPriceInfo] = useState('');
+  const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
 
   const togglePaymentMethod = (method: string) => {
     if (paymentMethods.includes(method)) {
@@ -28,7 +25,7 @@ export const StoreForm: React.FC<StoreFormProps> = ({ locationSelected, onSubmit
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!locationSelected && !isEditing) {
+    if (!locationSelected) {
       alert("지도에서 위치를 먼저 선택해주세요!");
       return;
     }
@@ -44,13 +41,11 @@ export const StoreForm: React.FC<StoreFormProps> = ({ locationSelected, onSubmit
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between border-b border-bung-200 pb-4">
-        <h2 className="text-2xl font-bold text-bung-900">
-          {isEditing ? '가게 정보 수정' : '가게 제보하기'}
-        </h2>
+        <h2 className="text-2xl font-bold text-bung-900">가게 제보하기</h2>
         <button onClick={onCancel} className="text-gray-500 hover:text-gray-800">닫기</button>
       </div>
       
-      {!locationSelected && !isEditing && (
+      {!locationSelected && (
         <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg text-sm animate-pulse">
           지도 상의 원하는 위치를 클릭하여 핀을 꽂아주세요!
         </div>
@@ -131,14 +126,14 @@ export const StoreForm: React.FC<StoreFormProps> = ({ locationSelected, onSubmit
 
         <button 
           type="submit" 
-          disabled={!locationSelected && !isEditing}
+          disabled={!locationSelected}
           className={`w-full py-4 rounded-xl font-bold text-lg shadow-md mt-4 transition-colors
-            ${(locationSelected || isEditing) 
+            ${locationSelected 
               ? 'bg-bung-600 hover:bg-bung-700 text-white' 
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'}
           `}
         >
-          {isEditing ? '수정 완료' : '등록하기'}
+          등록하기
         </button>
       </form>
     </div>

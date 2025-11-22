@@ -2,62 +2,8 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    
-    <!-- SEO: Basic Meta Tags -->
-    <title>붕맵 - 전국 붕어빵 지도 | 내 주변 붕세권 찾기</title>
-    <meta name="description" content="내 주변 붕어빵 가게 위치를 1초 만에 찾아보세요. 팥붕, 슈붕, 잉어빵 등 맛있는 겨울 간식 지도. 직접 가게를 등록하고 후기를 공유하는 붕어빵 지도 서비스 붕맵(BungMap)입니다.">
-    <meta name="keywords" content="붕어빵, 붕어빵지도, 붕맵, BungMap, 잉어빵, 붕세권, 겨울간식, 길거리음식, 팥붕, 슈붕, 대동붕어지도, 맛집지도">
-    <meta name="author" content="BungMap Team">
-    <meta name="robots" content="index, follow">
-
-    <!-- SEO: Open Graph (Facebook, KakaoTalk) -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://foodmap-347b3.web.app/">
-    <meta property="og:title" content="붕맵 - 전국 붕어빵 지도">
-    <meta property="og:description" content="아직도 붕어빵 찾아 헤매시나요? 붕맵에서 내 주변 붕어빵 가게를 확인하세요!">
-    <meta property="og:image" content="https://cdn-icons-png.flaticon.com/512/743/743231.png">
-    <meta property="og:locale" content="ko_KR">
-    <meta property="og:site_name" content="붕맵(BungMap)">
-
-    <!-- SEO: Twitter Card -->
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="붕맵 - 전국 붕어빵 지도">
-    <meta name="twitter:description" content="내 주변 붕어빵 가게 위치 찾기 및 공유 서비스">
-    <meta name="twitter:image" content="https://cdn-icons-png.flaticon.com/512/743/743231.png">
-
-    <!-- Canonical URL -->
-    <link rel="canonical" href="https://foodmap-347b3.web.app/">
-
-    <!-- PWA Settings -->
-    <meta name="theme-color" content="#ffc857">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/743/743231.png">
-    
-    <!-- PWA Manifest (Data URI) -->
-    <link rel="manifest" href='data:application/manifest+json,{"short_name":"붕맵","name":"붕맵 - 붕어빵 지도","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/743/743231.png","type":"image/png","sizes":"192x192","purpose":"any maskable"},{"src":"https://cdn-icons-png.flaticon.com/512/743/743231.png","type":"image/png","sizes":"512x512","purpose":"any maskable"}],"start_url":".","display":"standalone","theme_color":"#ffc857","background_color":"#fffbf0","orientation":"portrait"}'>
-
-    <!-- Structured Data (JSON-LD) for Google -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "붕맵 (BungMap)",
-      "url": "https://foodmap-347b3.web.app/",
-      "description": "내 주변 붕어빵 가게 위치를 찾고 공유하는 지도 서비스",
-      "applicationCategory": "Food & Drink",
-      "operatingSystem": "Web",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "KRW"
-      },
-      "screenshot": "https://cdn-icons-png.flaticon.com/512/743/743231.png"
-    }
-    </script>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BungMap - 붕어빵 지도</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -76,39 +22,9 @@
                 800: '#92400e',
                 900: '#78350f',
               }
-            },
-            animation: {
-              'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
-            },
-            keyframes: {
-              fadeInUp: {
-                '0%': { opacity: '0', transform: 'translateY(20px) scale(0.95)' },
-                '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
-              }
             }
           }
         }
-      }
-
-      // Service Worker Registration for PWA Install Criteria
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          const swCode = `
-            self.addEventListener('install', (event) => {
-              self.skipWaiting();
-            });
-            self.addEventListener('activate', (event) => {
-              event.waitUntil(clients.claim());
-            });
-            self.addEventListener('fetch', (event) => {
-              // Passthrough: A fetch handler is required for PWA installability criteria
-              // even if it does not cache anything aggressively.
-            });
-          `;
-          const blob = new Blob([swCode], {type: 'application/javascript'});
-          const url = URL.createObjectURL(blob);
-          navigator.serviceWorker.register(url).catch(err => console.log('SW fail', err));
-        });
       }
     </script>
     <!-- 

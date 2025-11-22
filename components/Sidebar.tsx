@@ -1,23 +1,17 @@
 import React from 'react';
 import { Store } from '../types';
-import { MapPin, ArrowRight, X } from 'lucide-react';
+import { MapPin, ArrowRight } from 'lucide-react';
 
 interface SidebarProps {
   stores: Store[];
   onSelectStore: (store: Store) => void;
-  onCloseMobile?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ stores, onSelectStore, onCloseMobile }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ stores, onSelectStore }) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
          <h3 className="font-bold text-gray-500 text-sm uppercase tracking-wider">내 주변 붕어빵 ({stores.length})</h3>
-         {onCloseMobile && (
-             <button onClick={onCloseMobile} className="md:hidden p-1 text-gray-400 hover:text-gray-600">
-                 <X className="w-5 h-5" />
-             </button>
-         )}
       </div>
       
       {stores.length === 0 ? (
