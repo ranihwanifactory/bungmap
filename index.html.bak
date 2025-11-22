@@ -31,7 +31,7 @@
       IMPORTANT: REPLACE 'YOUR_KAKAO_MAP_API_KEY' WITH A VALID KAKAO JAVASCRIPT KEY 
       Get it from: https://developers.kakao.com/
     -->
-    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=YOUR_KAKAO_MAP_API_KEY&libraries=services,clusterer"></script>
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=08318a127595566819a1c38d00deaab2&libraries=services,clusterer"></script>
   <script type="importmap">
 {
   "imports": {
