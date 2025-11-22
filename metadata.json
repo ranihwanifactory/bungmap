@@ -1,6 +1,6 @@
 {
   "name": "BungMap - 붕어빵 지도",
-  "description": "여러분 근처의 최고의 붕어빵 맛집을 찾아 공유해 보세요.",
+  "description": "내 주변 붕어빵 가게 위치 찾기 및 공유 서비스. 팥붕, 슈붕, 잉어빵 지도 붕맵.",
   "requestFramePermissions": [
     "geolocation"
   ]

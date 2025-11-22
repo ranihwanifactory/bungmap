@@ -226,7 +226,9 @@ export default function App() {
         ...reviewData,
         createdAt: Date.now()
       };
+      // Optimistically update UI
       setReviews([newReview, ...reviews]);
+      alert("소중한 후기가 등록되었습니다!");
     } catch (e: any) {
       console.error(e);
       alert("리뷰 등록에 실패했습니다.");
