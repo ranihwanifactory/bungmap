@@ -513,9 +513,9 @@ export default function App() {
         </div>
       </div>
 
-      {/* Install PWA Modal */}
+      {/* Install PWA Modal - High z-index to show above everything */}
       {showInstallModal && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center px-4 pb-6 sm:pb-0">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center px-4 pb-6 sm:pb-0">
           <div 
             className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
             onClick={() => setShowInstallModal(false)}

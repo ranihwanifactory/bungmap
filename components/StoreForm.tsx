@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Store, LatLng } from '../types';
 import { DollarSign, Camera, MapPin, X, RefreshCw } from 'lucide-react';
 
@@ -145,8 +146,46 @@ export const StoreForm: React.FC<StoreFormProps> = ({
     });
   };
 
+  // Camera View (Rendered via Portal to break out of sidebar layout)
+  if (isCameraMode) {
+    return createPortal(
+      <div className="fixed inset-0 z-[9999] bg-black flex flex-col h-[100dvh] w-screen touch-none">
+        <video 
+          ref={videoRef} 
+          autoPlay 
+          playsInline
+          className="flex-1 w-full h-full object-cover"
+        />
+        <canvas ref={canvasRef} className="hidden" />
+        
+        {/* Top Controls Overlay */}
+        <div className="absolute top-0 w-full pt-[env(safe-area-inset-top,20px)] px-4 pb-4 flex justify-between items-center bg-gradient-to-b from-black/60 to-transparent z-10">
+          <span className="text-white font-bold drop-shadow-md mt-2 ml-1">사진 촬영</span>
+          <button onClick={stopCamera} className="p-2 bg-black/20 backdrop-blur-md rounded-full text-white mt-2">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Bottom Controls Overlay */}
+        <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 via-black/40 to-transparent pb-[env(safe-area-inset-bottom,40px)] pt-12 px-6 flex items-center justify-between z-10">
+            <button onClick={stopCamera} className="text-white text-sm font-medium px-4 py-2 bg-black/20 backdrop-blur-sm rounded-full">
+                취소
+            </button>
+            <button 
+              onClick={capturePhoto}
+              className="w-20 h-20 rounded-full border-[5px] border-white/90 bg-white/20 flex items-center justify-center hover:bg-white/30 transition-all active:scale-95 shadow-lg"
+            >
+                <div className="w-16 h-16 bg-white rounded-full shadow-inner" />
+            </button>
+            <div className="w-12"></div> {/* Spacer for alignment */}
+        </div>
+      </div>,
+      document.body
+    );
+  }
+
   // Initial selection mode (Photo vs Map)
-  if (!locationSelected && !isEditing && !isCameraMode) {
+  if (!locationSelected && !isEditing) {
     return (
       <div className="space-y-6 h-full flex flex-col">
          <div className="flex items-center justify-between border-b border-bung-200 pb-4">
@@ -192,37 +231,6 @@ export const StoreForm: React.FC<StoreFormProps> = ({
               </div>
             </button>
          </div>
-      </div>
-    );
-  }
-
-  // Camera View
-  if (isCameraMode) {
-    return (
-      <div className="absolute inset-0 z-50 bg-black flex flex-col">
-        <video 
-          ref={videoRef} 
-          autoPlay 
-          playsInline
-          className="flex-1 w-full object-cover"
-        />
-        <canvas ref={canvasRef} className="hidden" />
-        
-        <div className="absolute top-0 w-full p-4 flex justify-between items-center bg-gradient-to-b from-black/50 to-transparent">
-          <span className="text-white font-bold">사진 촬영</span>
-          <button onClick={stopCamera} className="p-2 bg-black/40 rounded-full text-white">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        <div className="h-32 bg-black flex items-center justify-center gap-8 pb-8">
-            <button onClick={stopCamera} className="text-white text-sm font-medium">취소</button>
-            <button 
-              onClick={capturePhoto}
-              className="w-16 h-16 rounded-full border-4 border-white bg-white/20 hover:bg-white/40 transition-colors"
-            />
-            <button className="w-8" /> {/* Spacer */}
-        </div>
       </div>
     );
   }
