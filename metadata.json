@@ -1,7 +1,8 @@
 {
-  "name": "BungMap - 붕어빵 지도",
-  "description": "Find and share the best Bungeoppang (fish-shaped pastry) spots near you.",
+  "name": "붕어빵지도",
+  "description": "내 주변 붕어빵 가게 위치 찾기 및 공유 서비스. 팥붕, 슈붕, 잉어빵 지도.",
   "requestFramePermissions": [
-    "geolocation"
+    "geolocation",
+    "camera"
   ]
 }

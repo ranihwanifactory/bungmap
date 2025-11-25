@@ -9,6 +9,7 @@ export interface Store {
   paymentMethods: string[]; // e.g. ['cash', 'card', 'transfer']
   createdAt: number;
   userId: string;
+  imageUrl?: string;
 }
 
 export interface Review {

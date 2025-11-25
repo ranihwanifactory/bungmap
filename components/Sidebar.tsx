@@ -1,17 +1,23 @@
 import React from 'react';
 import { Store } from '../types';
-import { MapPin, ArrowRight } from 'lucide-react';
+import { MapPin, ArrowRight, X } from 'lucide-react';
 
 interface SidebarProps {
   stores: Store[];
   onSelectStore: (store: Store) => void;
+  onCloseMobile?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ stores, onSelectStore }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ stores, onSelectStore, onCloseMobile }) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
          <h3 className="font-bold text-gray-500 text-sm uppercase tracking-wider">내 주변 붕어빵 ({stores.length})</h3>
+         {onCloseMobile && (
+             <button onClick={onCloseMobile} className="md:hidden p-1 text-gray-400 hover:text-gray-600">
+                 <X className="w-5 h-5" />
+             </button>
+         )}
       </div>
       
       {stores.length === 0 ? (
@@ -25,20 +31,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ stores, onSelectStore }) => {
             <div 
               key={store.id} 
               onClick={() => onSelectStore(store)}
-              className="bg-white border border-bung-100 p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer group flex items-center justify-between"
+              className="bg-white border border-bung-100 p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer group flex items-center justify-between gap-3"
             >
-              <div>
-                <h4 className="font-bold text-gray-800 group-hover:text-bung-700 transition-colors mb-1">{store.name}</h4>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-gray-800 group-hover:text-bung-700 transition-colors mb-1 truncate">{store.name}</h4>
                 <div className="flex items-center text-xs text-gray-500 mb-1">
-                    <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-600 font-medium mr-2">
+                    <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-600 font-medium mr-2 shrink-0">
                         {store.category === 'redbean' ? '팥' : 
                          store.category === 'shucream' ? '슈크림' : 
                          store.category === 'pizza' ? '피자' : '기타'}
                     </span>
-                    <span>{store.priceInfo}</span>
+                    <span className="truncate">{store.priceInfo}</span>
                 </div>
               </div>
-              <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-bung-500" />
+              
+              {store.imageUrl && (
+                <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                  <img src={store.imageUrl} alt="" className="w-full h-full object-cover" />
+                </div>
+              )}
+
+              <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-bung-500 shrink-0" />
             </div>
           ))}
         </div>
