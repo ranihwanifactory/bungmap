@@ -16,14 +16,14 @@ declare global {
 
 // Sample Data for seeding
 const SAMPLE_SHOPS: Partial<Shop>[] = [
-  { name: '강남역 붕어빵', description: '9번 출구 앞, 팥이 꽉 찼어요!', location: { lat: 37.498095, lng: 127.027610 }, types: [ShopType.BEAN, ShopType.CREAM], price: '2개 1000원' },
-  { name: '부산 해운대 잉어빵', description: '바닷가 앞에서 먹는 맛', location: { lat: 35.158698, lng: 129.160384 }, types: [ShopType.PIZZA, ShopType.BEAN], price: '3개 2000원' },
-  { name: '전주 한옥마을 붕어', description: '전통의 맛, 줄 서서 먹어요.', location: { lat: 35.814708, lng: 127.152632 }, types: [ShopType.BEAN], price: '1개 1000원' },
-  { name: '제주 공항 붕어빵', description: '도착하자마자 하나!', location: { lat: 33.510413, lng: 126.491353 }, types: [ShopType.CREAM, ShopType.MINI], price: '5개 3000원' },
-  { name: '홍대 입구 슈크림', description: '늦게 가면 없어요', location: { lat: 37.556263, lng: 126.922960 }, types: [ShopType.CREAM], price: '2개 1500원' },
-  { name: '대전 성심당 근처', description: '튀김소보로 말고 붕어빵도 있어요', location: { lat: 36.327666, lng: 127.427329 }, types: [ShopType.BEAN, ShopType.PIZZA], price: '3개 2000원' },
-  { name: '대구 동성로 미니붕어', description: '쇼핑하다 출출할 때 최고', location: { lat: 35.868615, lng: 128.598687 }, types: [ShopType.MINI], price: '10개 3000원' },
-  { name: '광주 펭귄마을 붕어', description: '귀여운 모양의 붕어빵', location: { lat: 35.139686, lng: 126.913543 }, types: [ShopType.BEAN, ShopType.CREAM], price: '3개 2000원' }
+  { name: '강남역 붕어빵', description: '9번 출구 앞, 팥이 꽉 찼어요!', location: { lat: 37.498095, lng: 127.027610 }, types: [ShopType.BEAN, ShopType.CREAM], price: '2개 1000원', reporterName: '붕어빵헌터' },
+  { name: '부산 해운대 잉어빵', description: '바닷가 앞에서 먹는 맛', location: { lat: 35.158698, lng: 129.160384 }, types: [ShopType.PIZZA, ShopType.BEAN, ShopType.ODENG], price: '3개 2000원', reporterName: '부산갈매기' },
+  { name: '전주 한옥마을 붕어', description: '전통의 맛, 줄 서서 먹어요.', location: { lat: 35.814708, lng: 127.152632 }, types: [ShopType.BEAN], price: '1개 1000원', reporterName: '전주비빔' },
+  { name: '제주 공항 붕어빵', description: '도착하자마자 하나!', location: { lat: 33.510413, lng: 126.491353 }, types: [ShopType.CREAM, ShopType.MINI], price: '5개 3000원', reporterName: '제주도민' },
+  { name: '홍대 입구 슈크림', description: '늦게 가면 없어요', location: { lat: 37.556263, lng: 126.922960 }, types: [ShopType.CREAM], price: '2개 1500원', reporterName: '힙스터' },
+  { name: '대전 성심당 근처', description: '튀김소보로 말고 붕어빵도 있어요', location: { lat: 36.327666, lng: 127.427329 }, types: [ShopType.BEAN, ShopType.PIZZA], price: '3개 2000원', reporterName: '빵순이' },
+  { name: '대구 동성로 미니붕어', description: '쇼핑하다 출출할 때 최고', location: { lat: 35.868615, lng: 128.598687 }, types: [ShopType.MINI, ShopType.ODENG], price: '10개 3000원', reporterName: '대구시민' },
+  { name: '광주 펭귄마을 붕어', description: '귀여운 모양의 붕어빵', location: { lat: 35.139686, lng: 126.913543 }, types: [ShopType.BEAN, ShopType.CREAM], price: '3개 2000원', reporterName: '펭귄러버' }
 ];
 
 const App: React.FC = () => {
@@ -248,6 +248,9 @@ const App: React.FC = () => {
   const handleShopSubmit = (data: { name: string; description: string; types: ShopType[]; price: string }) => {
     if (!user) return;
     
+    // Get reporter name (Display name or part of email)
+    const reporterName = user.displayName || (user.email ? user.email.split('@')[0] : "익명");
+
     if (editingShop) {
       // UPDATE EXISTING
       const shopRef = ref(db, `shops/${editingShop.id}`);
@@ -257,6 +260,7 @@ const App: React.FC = () => {
         types: data.types,
         price: data.price,
         location: mapCenter, // Update location to current center
+        // Note: We don't update reporterId/Name on edit typically, but could if needed.
       });
       alert("정보가 수정되었습니다.");
       setEditingShop(null);
@@ -271,6 +275,7 @@ const App: React.FC = () => {
         types: data.types,
         createdAt: Date.now(),
         reporterId: user.uid,
+        reporterName: reporterName,
         price: data.price,
         isOpen: true,
       };
@@ -320,6 +325,7 @@ const App: React.FC = () => {
         id: newShopRef.key!,
         createdAt: Date.now(),
         reporterId: user?.uid || 'admin',
+        reporterName: shop.reporterName || '관리자',
         isOpen: true
       });
     });
@@ -437,6 +443,7 @@ const App: React.FC = () => {
                 <h2 className="text-2xl font-bold text-gray-800 font-hand flex items-center gap-2">
                   {selectedShop.name}
                   {selectedShop.types.includes(ShopType.CREAM) && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-sans">슈크림</span>}
+                  {selectedShop.types.includes(ShopType.ODENG) && <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-sans">어묵</span>}
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">{selectedShop.description || "상세 설명이 없습니다."}</p>
               </div>
@@ -462,7 +469,7 @@ const App: React.FC = () => {
 
             <div className="flex justify-between items-center mt-2 border-t border-gray-100 pt-4">
               <span className="text-xs text-gray-400">
-                제보자: {selectedShop.reporterId.slice(0, 5)}***
+                제보자: {selectedShop.reporterName || selectedShop.reporterId.slice(0, 5) + "***"}
               </span>
               
               {canEdit && (

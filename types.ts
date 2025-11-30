@@ -8,6 +8,7 @@ export enum ShopType {
   CREAM = '슈크림',
   PIZZA = '피자/치즈',
   MINI = '미니',
+  ODENG = '어묵/오뎅',
   OTHER = '기타'
 }
 
@@ -19,6 +20,7 @@ export interface Shop {
   types: ShopType[];
   createdAt: number;
   reporterId: string; // User ID who reported
+  reporterName?: string; // Display name of the reporter
   price?: string;
   isOpen?: boolean;
 }

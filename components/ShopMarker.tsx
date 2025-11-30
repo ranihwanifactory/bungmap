@@ -13,9 +13,24 @@ export const getMarkerContent = (shop: Shop, isSelected: boolean) => {
   if (shop.types.includes(ShopType.CREAM)) {
     emoji = '🍦';
     fillColor = '#FACC15'; // yellow-400
-  } else if (shop.types.includes(ShopType.PIZZA)) {
-    emoji = '🍕';
-    fillColor = '#EA580C'; // orange-600
+  } else if (shop.types.includes(ShopType.ODENG)) {
+    // If it has Odeng, we might want to show it, or keep it fish. 
+    // If it's ONLY Odeng or Odeng is significant, we could change color.
+    // Let's use a reddish color if Odeng is present but keep the fish emoji if Bungeoppang is also there.
+    // If only Odeng, maybe change emoji? But the app is "Bungeoppang Map".
+    // Let's just change fill color to reddish orange if Odeng is a primary feature.
+    // But usually Bungeoppang is main. 
+    // Let's just add a condition: if no cream/bean/pizza, but has odeng, make it red.
+    const hasBungeoppang = shop.types.some(t => [ShopType.BEAN, ShopType.CREAM, ShopType.PIZZA, ShopType.MINI].includes(t));
+    if (!hasBungeoppang) {
+        emoji = '🍢';
+        fillColor = '#EF4444'; // red-500
+    }
+  }
+  
+  if (shop.types.includes(ShopType.PIZZA)) {
+     emoji = '🍕';
+     fillColor = '#EA580C'; // orange-600
   }
 
   // Define scale and z-index based on selection
