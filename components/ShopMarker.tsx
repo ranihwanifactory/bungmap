@@ -14,13 +14,6 @@ export const getMarkerContent = (shop: Shop, isSelected: boolean) => {
     emoji = '🍦';
     fillColor = '#FACC15'; // yellow-400
   } else if (shop.types.includes(ShopType.ODENG)) {
-    // If it has Odeng, we might want to show it, or keep it fish. 
-    // If it's ONLY Odeng or Odeng is significant, we could change color.
-    // Let's use a reddish color if Odeng is present but keep the fish emoji if Bungeoppang is also there.
-    // If only Odeng, maybe change emoji? But the app is "Bungeoppang Map".
-    // Let's just change fill color to reddish orange if Odeng is a primary feature.
-    // But usually Bungeoppang is main. 
-    // Let's just add a condition: if no cream/bean/pizza, but has odeng, make it red.
     const hasBungeoppang = shop.types.some(t => [ShopType.BEAN, ShopType.CREAM, ShopType.PIZZA, ShopType.MINI].includes(t));
     if (!hasBungeoppang) {
         emoji = '🍢';
@@ -42,8 +35,14 @@ export const getMarkerContent = (shop: Shop, isSelected: boolean) => {
   // SVG-based Marker
   // ViewBox: 0 0 46 58
   // The tip of the pin is at (23, 58)
-  // We use yAnchor: 1 in the map options (App.tsx), so the bottom of this SVG aligns with the map coordinate.
   
+  // Tooltip Visibility Logic:
+  // If selected: Visible (opacity-100)
+  // If not selected: Hidden (opacity-0) normally, but Visible on Hover (group-hover:opacity-100)
+  const tooltipStyle = isSelected
+    ? 'opacity-100 visible'
+    : 'opacity-0 invisible group-hover:opacity-100 group-hover:visible';
+
   return `
     <div class="relative group cursor-pointer transition-transform duration-200 origin-bottom ${containerStyle}">
       <svg width="46" height="58" viewBox="0 0 46 58" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 4px 3px rgba(0,0,0,0.15));">
@@ -58,13 +57,11 @@ export const getMarkerContent = (shop: Shop, isSelected: boolean) => {
         ${emoji}
       </div>
 
-      <!-- Label / Tooltip (Visible when selected) -->
-      ${isSelected ? `
-        <div class="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white text-gray-800 text-xs font-bold px-3 py-1.5 rounded-xl shadow-lg border border-gray-100 animate-slide-up flex flex-col items-center">
-          ${shop.name}
-          <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white transform rotate-45 border-b border-r border-gray-100"></div>
-        </div>
-      ` : ''}
+      <!-- Label / Tooltip (Visible on Hover or Selected) -->
+      <div class="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white text-gray-800 text-xs font-bold px-3 py-1.5 rounded-xl shadow-lg border border-gray-100 flex flex-col items-center transition-all duration-200 ${tooltipStyle}">
+        ${shop.name}
+        <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white transform rotate-45 border-b border-r border-gray-100"></div>
+      </div>
     </div>
   `;
 };

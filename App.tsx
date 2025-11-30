@@ -6,7 +6,7 @@ import { User, Shop, ShopType, Location, ADMIN_EMAIL } from './types';
 import { ShopModal } from './components/ShopModal';
 import { Button } from './components/Button';
 import { getMarkerContent } from './components/ShopMarker';
-import { Navigation, Plus, User as UserIcon, LogOut, Trash2, MapPin, Check, X, Database, Edit3 } from 'lucide-react';
+import { Navigation, Plus, User as UserIcon, LogOut, Trash2, MapPin, Check, X, Database, Edit3, Share2, Download, CornerUpRight } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -40,6 +40,7 @@ const App: React.FC = () => {
   const [editingShop, setEditingShop] = useState<Shop | null>(null); // Shop currently being edited
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialBoundsSet, setIsInitialBoundsSet] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const overlaysRef = useRef<any[]>([]);
@@ -61,6 +62,19 @@ const App: React.FC = () => {
       }
     });
     return () => unsubscribe();
+  }, []);
+
+  // 1.5 Install Prompt Listener
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
   }, []);
 
   // 2. Load Shops from Firebase
@@ -227,6 +241,44 @@ const App: React.FC = () => {
 
   const handleLogout = () => signOut(auth);
 
+  const handleInstallApp = async () => {
+    if (installPrompt) {
+      installPrompt.prompt();
+      const { outcome } = await installPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setInstallPrompt(null);
+      }
+    } else {
+      alert("앱 설치가 지원되지 않는 브라우저이거나 이미 설치되어 있습니다. (모바일 Chrome, Safari 사용 권장)");
+    }
+  };
+
+  const handleShare = async (shop: Shop) => {
+    const shareData = {
+      title: '붕어빵 대동여지도',
+      text: `${shop.name} - 여기 붕어빵 맛집이에요! 🐟\n가격: ${shop.price || '정보없음'}`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
+        alert("가게 정보가 클립보드에 복사되었습니다!");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleNavigate = (shop: Shop) => {
+    // Kakao Map Directions URL
+    // Format: https://map.kakao.com/link/to/Name,Lat,Lng
+    const url = `https://map.kakao.com/link/to/${encodeURIComponent(shop.name)},${shop.location.lat},${shop.location.lng}`;
+    window.open(url, '_blank');
+  };
+
   // Start Location Selection Mode
   const startAddShopProcess = () => {
     setIsSelectingLocation(true);
@@ -362,17 +414,26 @@ const App: React.FC = () => {
 
       {/* Top Navigation / Auth */}
       <div className={`absolute top-0 left-0 right-0 z-20 p-4 transition-transform duration-300 ${isSelectingLocation ? '-translate-y-full' : 'translate-y-0'}`}>
-        <div className="flex justify-between items-start max-w-2xl mx-auto pointer-events-auto">
+        <div className="flex justify-between items-start max-w-4xl mx-auto pointer-events-auto">
           <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-lg border border-orange-100">
             <h1 className="text-xl font-bold text-amber-600 font-hand flex items-center gap-2">
-              <span className="text-2xl">🐟</span> 붕어빵 대동여지도
+              <span className="text-2xl">🐟</span> <span className="hidden sm:inline">붕어빵 대동여지도</span>
             </h1>
           </div>
           
           <div className="flex gap-2">
+             {/* Install App Button */}
+             <button 
+                onClick={handleInstallApp}
+                className="bg-white/90 backdrop-blur-md p-2 rounded-full shadow-lg border border-orange-100 text-amber-600 hover:bg-amber-50 transition-colors"
+                title="앱 설치하기"
+              >
+                <Download size={20} />
+              </button>
+
             {!user ? (
               <Button onClick={handleLogin} size="sm" className="bg-gray-900 text-white shadow-lg">
-                <UserIcon size={16} /> 로그인
+                <UserIcon size={16} /> <span className="hidden sm:inline">로그인</span>
               </Button>
             ) : (
               <div className="flex items-center gap-2 bg-white/90 backdrop-blur-md p-1.5 rounded-full shadow-lg border border-orange-100">
@@ -439,15 +500,15 @@ const App: React.FC = () => {
             <div className="absolute top-0 left-0 w-full h-1.5 bg-amber-400"></div>
             
             <div className="flex justify-between items-start mb-4">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800 font-hand flex items-center gap-2">
+              <div className="pr-8">
+                <h2 className="text-2xl font-bold text-gray-800 font-hand flex flex-wrap items-center gap-2">
                   {selectedShop.name}
-                  {selectedShop.types.includes(ShopType.CREAM) && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-sans">슈크림</span>}
-                  {selectedShop.types.includes(ShopType.ODENG) && <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-sans">어묵</span>}
+                  {selectedShop.types.includes(ShopType.CREAM) && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-sans whitespace-nowrap">슈크림</span>}
+                  {selectedShop.types.includes(ShopType.ODENG) && <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-sans whitespace-nowrap">어묵</span>}
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">{selectedShop.description || "상세 설명이 없습니다."}</p>
               </div>
-              <button onClick={() => setSelectedShopId(null)} className="text-gray-400 hover:text-gray-600 p-1">
+              <button onClick={() => setSelectedShopId(null)} className="text-gray-400 hover:text-gray-600 p-1 flex-shrink-0">
                 <Plus size={24} className="rotate-45" />
               </button>
             </div>
@@ -468,9 +529,27 @@ const App: React.FC = () => {
             </div>
 
             <div className="flex justify-between items-center mt-2 border-t border-gray-100 pt-4">
-              <span className="text-xs text-gray-400">
-                제보자: {selectedShop.reporterName || selectedShop.reporterId.slice(0, 5) + "***"}
-              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-gray-400 mr-1">
+                  제보자: {selectedShop.reporterName || selectedShop.reporterId.slice(0, 5) + "***"}
+                </span>
+                
+                {/* Share Button */}
+                <button 
+                  onClick={() => handleShare(selectedShop)}
+                  className="flex items-center gap-1 text-gray-600 text-sm hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors border border-gray-200"
+                >
+                  <Share2 size={14} /> <span className="text-xs font-medium">공유</span>
+                </button>
+
+                {/* Navigate Button */}
+                <button 
+                  onClick={() => handleNavigate(selectedShop)}
+                  className="flex items-center gap-1 text-emerald-600 text-sm hover:bg-emerald-50 px-2 py-1 rounded-lg transition-colors border border-emerald-200"
+                >
+                  <CornerUpRight size={14} /> <span className="text-xs font-medium">길찾기</span>
+                </button>
+              </div>
               
               {canEdit && (
                 <div className="flex gap-2">
