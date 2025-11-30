@@ -39,6 +39,7 @@ const App: React.FC = () => {
   const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
   const [editingShop, setEditingShop] = useState<Shop | null>(null); // Shop currently being edited
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialBoundsSet, setIsInitialBoundsSet] = useState(false);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const overlaysRef = useRef<any[]>([]);
@@ -180,6 +181,18 @@ const App: React.FC = () => {
     }
 
   }, [map, myLocation]);
+
+  // 6. Set Initial Map Bounds to show all shops
+  useEffect(() => {
+    if (map && window.kakao && shops.length > 0 && !isInitialBoundsSet) {
+      const bounds = new window.kakao.maps.LatLngBounds();
+      shops.forEach((shop) => {
+        bounds.extend(new window.kakao.maps.LatLng(shop.location.lat, shop.location.lng));
+      });
+      map.setBounds(bounds);
+      setIsInitialBoundsSet(true);
+    }
+  }, [map, shops, isInitialBoundsSet]);
 
   // Actions
   const handleMyLocation = () => {
@@ -326,9 +339,11 @@ const App: React.FC = () => {
 
       {/* Center Fixed Pin (Visible only when selecting location) */}
       {isSelectingLocation && (
-        <div className="absolute inset-0 z-10 pointer-events-none flex flex-col items-center justify-center pb-8">
-           <MapPin size={48} className="text-amber-600 fill-amber-500 drop-shadow-xl animate-bounce-slight" strokeWidth={2} />
-           <div className="w-2 h-2 bg-black/20 rounded-full blur-[2px]"></div>
+        <div className="absolute top-1/2 left-1/2 z-10 pointer-events-none transform -translate-x-1/2 -translate-y-full flex flex-col items-center">
+           {/* Pin Image */}
+           <MapPin size={48} className="text-amber-600 fill-amber-500 drop-shadow-2xl animate-bounce-slight" strokeWidth={2} />
+           {/* Shadow Point on the ground (Screen Center) */}
+           <div className="absolute -bottom-1 w-2 h-1 bg-black/30 rounded-full blur-[1px]"></div>
         </div>
       )}
 
