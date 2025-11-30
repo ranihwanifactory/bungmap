@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
-import { ref, push, onValue, remove, set } from 'firebase/database';
+import { ref, push, onValue, remove, set, update } from 'firebase/database';
 import { auth, db, googleProvider } from './firebase';
 import { User, Shop, ShopType, Location, ADMIN_EMAIL } from './types';
 import { ShopModal } from './components/ShopModal';
 import { Button } from './components/Button';
 import { getMarkerContent } from './components/ShopMarker';
-import { Navigation, Plus, User as UserIcon, LogOut, Trash2, MapPin, Check, X, Database } from 'lucide-react';
+import { Navigation, Plus, User as UserIcon, LogOut, Trash2, MapPin, Check, X, Database, Edit3 } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -37,6 +37,7 @@ const App: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSelectingLocation, setIsSelectingLocation] = useState(false); // Mode for pinning location
   const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
+  const [editingShop, setEditingShop] = useState<Shop | null>(null); // Shop currently being edited
   const [isLoading, setIsLoading] = useState(true);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -217,6 +218,7 @@ const App: React.FC = () => {
   const startAddShopProcess = () => {
     setIsSelectingLocation(true);
     setSelectedShopId(null);
+    setEditingShop(null); // Ensure we are not in edit mode
   };
 
   // Confirm Location and Open Modal
@@ -229,23 +231,45 @@ const App: React.FC = () => {
     setIsSelectingLocation(false);
   };
 
-  const handleAddShop = (data: { name: string; description: string; types: ShopType[]; price: string }) => {
+  const handleShopSubmit = (data: { name: string; description: string; types: ShopType[]; price: string }) => {
     if (!user) return;
     
-    const newShopRef = push(ref(db, 'shops'));
-    const newShop: Shop = {
-      id: newShopRef.key!,
-      name: data.name,
-      description: data.description,
-      location: mapCenter, // Use current center (which user confirmed)
-      types: data.types,
-      createdAt: Date.now(),
-      reporterId: user.uid,
-      price: data.price,
-      isOpen: true,
-    };
-    set(newShopRef, newShop);
-    setSelectedShopId(newShopRef.key);
+    if (editingShop) {
+      // UPDATE EXISTING
+      const shopRef = ref(db, `shops/${editingShop.id}`);
+      update(shopRef, {
+        name: data.name,
+        description: data.description,
+        types: data.types,
+        price: data.price,
+      });
+      // Don't change location, createdAt, reporterId
+      alert("정보가 수정되었습니다.");
+      setEditingShop(null);
+    } else {
+      // CREATE NEW
+      const newShopRef = push(ref(db, 'shops'));
+      const newShop: Shop = {
+        id: newShopRef.key!,
+        name: data.name,
+        description: data.description,
+        location: mapCenter, // Use current center (which user confirmed)
+        types: data.types,
+        createdAt: Date.now(),
+        reporterId: user.uid,
+        price: data.price,
+        isOpen: true,
+      };
+      set(newShopRef, newShop);
+      setSelectedShopId(newShopRef.key);
+    }
+  };
+
+  const handleEditShop = () => {
+    const shopToEdit = shops.find(s => s.id === selectedShopId);
+    if (!shopToEdit) return;
+    setEditingShop(shopToEdit);
+    setIsModalOpen(true);
   };
 
   const handleDeleteShop = (shopId: string) => {
@@ -253,6 +277,11 @@ const App: React.FC = () => {
       remove(ref(db, `shops/${shopId}`));
       setSelectedShopId(null);
     }
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setEditingShop(null); // Reset edit state when closing
   };
 
   // Seed Data Function (Admin Only)
@@ -273,6 +302,9 @@ const App: React.FC = () => {
   };
 
   const selectedShop = shops.find(s => s.id === selectedShopId);
+
+  // Permission Logic
+  const canEdit = selectedShop && user && (user.isAdmin || user.uid === selectedShop.reporterId);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-orange-50">
@@ -406,13 +438,21 @@ const App: React.FC = () => {
                 제보자: {selectedShop.reporterId.slice(0, 5)}***
               </span>
               
-              {user && (user.isAdmin || user.uid === selectedShop.reporterId) && (
-                <button 
-                  onClick={() => handleDeleteShop(selectedShop.id)}
-                  className="flex items-center gap-1 text-red-500 text-sm hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  <Trash2 size={14} /> 삭제하기
-                </button>
+              {canEdit && (
+                <div className="flex gap-2">
+                   <button 
+                    onClick={handleEditShop}
+                    className="flex items-center gap-1 text-blue-500 text-sm hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    <Edit3 size={14} /> 수정
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteShop(selectedShop.id)}
+                    className="flex items-center gap-1 text-red-500 text-sm hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    <Trash2 size={14} /> 삭제
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -430,9 +470,15 @@ const App: React.FC = () => {
 
       <ShopModal 
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleAddShop}
+        onClose={handleModalClose}
+        onSubmit={handleShopSubmit}
         location={mapCenter}
+        initialData={editingShop ? {
+          name: editingShop.name,
+          description: editingShop.description,
+          types: editingShop.types,
+          price: editingShop.price || ''
+        } : null}
       />
     </div>
   );

@@ -1,22 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShopType, Location } from '../types';
 import { Button } from './Button';
-import { X, MapPin } from 'lucide-react';
+import { X, MapPin, Edit3 } from 'lucide-react';
 
 interface ShopModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: { name: string; description: string; types: ShopType[]; price: string }) => void;
   location: Location | null;
+  initialData?: {
+    name: string;
+    description: string;
+    types: ShopType[];
+    price: string;
+  } | null;
 }
 
-export const ShopModal: React.FC<ShopModalProps> = ({ isOpen, onClose, onSubmit, location }) => {
+export const ShopModal: React.FC<ShopModalProps> = ({ isOpen, onClose, onSubmit, location, initialData }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<ShopType[]>([]);
   const [price, setPrice] = useState('');
 
+  // Sync state with initialData when modal opens or initialData changes
+  useEffect(() => {
+    if (isOpen) {
+      if (initialData) {
+        setName(initialData.name);
+        setDescription(initialData.description);
+        setSelectedTypes(initialData.types || []);
+        setPrice(initialData.price || '');
+      } else {
+        // Reset for new entry
+        setName('');
+        setDescription('');
+        setSelectedTypes([]);
+        setPrice('');
+      }
+    }
+  }, [isOpen, initialData]);
+
   if (!isOpen) return null;
+
+  const isEditing = !!initialData;
 
   const handleTypeToggle = (type: ShopType) => {
     if (selectedTypes.includes(type)) {
@@ -34,11 +60,6 @@ export const ShopModal: React.FC<ShopModalProps> = ({ isOpen, onClose, onSubmit,
     }
     onSubmit({ name, description, types: selectedTypes, price });
     onClose();
-    // Reset form
-    setName('');
-    setDescription('');
-    setSelectedTypes([]);
-    setPrice('');
   };
 
   return (
@@ -46,16 +67,22 @@ export const ShopModal: React.FC<ShopModalProps> = ({ isOpen, onClose, onSubmit,
       <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl animate-slide-up relative overflow-hidden">
         
         {/* Header Pattern */}
-        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-amber-300 via-orange-400 to-amber-500"></div>
+        <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${isEditing ? 'from-blue-300 via-indigo-400 to-blue-500' : 'from-amber-300 via-orange-400 to-amber-500'}`}></div>
 
         <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
           <X size={24} />
         </button>
 
-        <h2 className="text-2xl font-bold text-gray-800 font-hand mb-1">붕어빵 제보하기 🐟</h2>
+        <h2 className="text-2xl font-bold text-gray-800 font-hand mb-1 flex items-center gap-2">
+          {isEditing ? <Edit3 size={24} className="text-blue-500"/> : null} 
+          {isEditing ? "가게 정보 수정" : "붕어빵 제보하기 🐟"}
+        </h2>
         <p className="text-xs text-gray-500 mb-6 flex items-center gap-1">
           <MapPin size={12} />
-          {location ? "지도 중심 위치에 등록됩니다" : "위치 정보를 가져오는 중..."}
+          {isEditing 
+            ? "위치는 수정할 수 없습니다." 
+            : (location ? "지도 중심 위치에 등록됩니다" : "위치 정보를 가져오는 중...")
+          }
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -112,8 +139,8 @@ export const ShopModal: React.FC<ShopModalProps> = ({ isOpen, onClose, onSubmit,
             />
           </div>
 
-          <Button type="submit" className="w-full py-3 text-lg shadow-lg shadow-amber-200/50 mt-2">
-            등록하기
+          <Button type="submit" className={`w-full py-3 text-lg shadow-lg mt-2 ${isEditing ? 'bg-blue-500 hover:bg-blue-600 shadow-blue-200' : 'shadow-amber-200/50'}`}>
+            {isEditing ? "수정 완료" : "등록하기"}
           </Button>
         </form>
       </div>
