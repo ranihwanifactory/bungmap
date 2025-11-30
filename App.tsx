@@ -229,6 +229,7 @@ const App: React.FC = () => {
 
   const handleCancelLocation = () => {
     setIsSelectingLocation(false);
+    setEditingShop(null); // Clear editing state if cancelled
   };
 
   const handleShopSubmit = (data: { name: string; description: string; types: ShopType[]; price: string }) => {
@@ -242,8 +243,8 @@ const App: React.FC = () => {
         description: data.description,
         types: data.types,
         price: data.price,
+        location: mapCenter, // Update location to current center
       });
-      // Don't change location, createdAt, reporterId
       alert("정보가 수정되었습니다.");
       setEditingShop(null);
     } else {
@@ -268,8 +269,19 @@ const App: React.FC = () => {
   const handleEditShop = () => {
     const shopToEdit = shops.find(s => s.id === selectedShopId);
     if (!shopToEdit) return;
+    
     setEditingShop(shopToEdit);
-    setIsModalOpen(true);
+    
+    // Pan map to current shop location for editing
+    setMapCenter(shopToEdit.location);
+    if (map && window.kakao) {
+         const moveLatLon = new window.kakao.maps.LatLng(shopToEdit.location.lat, shopToEdit.location.lng);
+         map.panTo(moveLatLon);
+    }
+
+    // Enter location selection mode for editing
+    setIsSelectingLocation(true);
+    setSelectedShopId(null);
   };
 
   const handleDeleteShop = (shopId: string) => {
@@ -365,14 +377,14 @@ const App: React.FC = () => {
       {isSelectingLocation ? (
         <div className="absolute bottom-10 left-0 right-0 z-30 flex flex-col items-center gap-4 px-4 animate-slide-up">
            <div className="bg-gray-800/80 backdrop-blur text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg">
-             지도를 움직여 가게 위치를 맞춰주세요
+             {editingShop ? "가게의 새로운 위치를 선택해주세요" : "지도를 움직여 가게 위치를 맞춰주세요"}
            </div>
            <div className="flex gap-3 w-full max-w-sm justify-center">
              <Button onClick={handleCancelLocation} variant="secondary" className="shadow-lg">
                <X size={20} /> 취소
              </Button>
              <Button onClick={handleConfirmLocation} variant="primary" className="shadow-lg flex-1">
-               <Check size={20} /> 이 위치에 등록하기
+               <Check size={20} /> {editingShop ? "위치 수정완료" : "이 위치에 등록하기"}
              </Button>
            </div>
         </div>

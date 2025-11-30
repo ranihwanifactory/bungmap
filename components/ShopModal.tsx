@@ -80,7 +80,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({ isOpen, onClose, onSubmit,
         <p className="text-xs text-gray-500 mb-6 flex items-center gap-1">
           <MapPin size={12} />
           {isEditing 
-            ? "위치는 수정할 수 없습니다." 
+            ? "위치도 함께 수정됩니다" 
             : (location ? "지도 중심 위치에 등록됩니다" : "위치 정보를 가져오는 중...")
           }
         </p>
