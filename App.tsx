@@ -1,556 +1,356 @@
-import React, { useState, useEffect } from 'react';
-import { KakaoMap } from './components/KakaoMap';
-import { Sidebar } from './components/Sidebar';
-import { StoreForm } from './components/StoreForm';
-import { StoreDetail } from './components/StoreDetail';
-import { AuthForm } from './components/AuthForm';
-import { Store, Review, LatLng } from './types';
-import { getStores, addStore, getReviews, addReview, updateStore, deleteStore, updateReview, deleteReview, uploadImage } from './services/firebaseService';
-import { auth } from './firebase';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { Plus, Fish, LogOut, AlertTriangle, Download, List, Map as MapIcon } from 'lucide-react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { onAuthStateChanged, signInWithPopup, signOut, User as FirebaseUser } from 'firebase/auth';
+import { ref, push, onValue, remove, set } from 'firebase/database';
+import { auth, db, googleProvider } from './firebase';
+import { User, Shop, ShopType, Location, ADMIN_EMAIL } from './types';
+import { ShopModal } from './components/ShopModal';
+import { Button } from './components/Button';
+import { getMarkerContent } from './components/ShopMarker';
+import { MapPin, Navigation, Plus, User as UserIcon, LogOut, Trash2, Fish } from 'lucide-react';
 
-export default function App() {
-  const [user, setUser] = useState<any>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+declare global {
+  interface Window {
+    kakao: any;
+  }
+}
 
-  const [stores, setStores] = useState<Store[]>([]);
-  
-  // UI States
-  const [selectedStore, setSelectedStore] = useState<Store | null>(null);
-  const [isAddingStore, setIsAddingStore] = useState(false);
-  const [isEditingStore, setIsEditingStore] = useState(false);
-  const [isMobileListOpen, setIsMobileListOpen] = useState(false); // New state for mobile list toggle
-  
-  // Location States
-  const [newStoreLocation, setNewStoreLocation] = useState<LatLng | null>(null);
-  const [currentLocation, setCurrentLocation] = useState<LatLng | null>(null);
-  const [mapCenter, setMapCenter] = useState<LatLng>({ lat: 37.5665, lng: 126.9780 });
-  
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [reviewsLoading, setReviewsLoading] = useState(false); // Separate loading state for reviews
-  
-  // Permission Error State
-  const [permissionError, setPermissionError] = useState(false);
+const App: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [shops, setShops] = useState<Shop[]>([]);
+  const [map, setMap] = useState<any>(null);
+  const [myLocation, setMyLocation] = useState<Location | null>(null);
+  const [mapCenter, setMapCenter] = useState<Location>({ lat: 37.566826, lng: 126.9786567 }); // Default Seoul
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const markersRef = useRef<any[]>([]);
+  const overlaysRef = useRef<any[]>([]);
 
-  // PWA Install State
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [showInstallModal, setShowInstallModal] = useState(false);
-
-  // PWA Install Listener
+  // 1. Auth Listener
   useEffect(() => {
-    const handleBeforeInstallPrompt = (e: any) => {
-      e.preventDefault();
-      // Check if app is not already installed (standalone)
-      if (!window.matchMedia('(display-mode: standalone)').matches) {
-        setDeferredPrompt(e);
-        setShowInstallModal(true);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setUser({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          photoURL: firebaseUser.photoURL,
+          isAdmin: firebaseUser.email === ADMIN_EMAIL,
+        });
+      } else {
+        setUser(null);
       }
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
-  }, []);
-
-  const handleInstallApp = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        console.log('User accepted the install prompt');
-      }
-      setDeferredPrompt(null);
-      setShowInstallModal(false);
-    }
-  };
-
-  // Auth State Listener
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setAuthLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
-  // Initial Data Load
+  // 2. Load Shops from Firebase
   useEffect(() => {
-    if (!user) return;
-
-    const fetchStores = async () => {
-      try {
-        const data = await getStores();
-        setStores(data);
-        setPermissionError(false);
-      } catch (error: any) {
-        console.error("Error fetching stores:", error);
-        if (error.code === 'permission-denied' || error.message?.includes('Missing or insufficient permissions')) {
-          setPermissionError(true);
-        }
-      } finally {
-        setLoading(false);
+    const shopsRef = ref(db, 'shops');
+    const unsubscribe = onValue(shopsRef, (snapshot) => {
+      const data = snapshot.val();
+      const shopList: Shop[] = [];
+      if (data) {
+        Object.keys(data).forEach((key) => {
+          shopList.push({
+            id: key,
+            ...data[key],
+          });
+        });
       }
-    };
+      setShops(shopList);
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
-    fetchStores();
+  // 3. Initialize Kakao Map
+  useEffect(() => {
+    const script = document.createElement("script");
+    // Ensure the key in index.html is correct. This is a fallback check.
+    if (!window.kakao) {
+      console.warn("Kakao Map SDK not loaded. Check API Key in index.html");
+      return;
+    }
 
-    // Get user location
+    window.kakao.maps.load(() => {
+      if (!mapContainerRef.current) return;
+      
+      const options = {
+        center: new window.kakao.maps.LatLng(mapCenter.lat, mapCenter.lng),
+        level: 4,
+      };
+      const newMap = new window.kakao.maps.Map(mapContainerRef.current, options);
+      setMap(newMap);
+
+      // Listener for center change (to set new shop location)
+      window.kakao.maps.event.addListener(newMap, 'center_changed', () => {
+        const center = newMap.getCenter();
+        setMapCenter({ lat: center.getLat(), lng: center.getLng() });
+      });
+      
+      // Listener to deselect shop on click map
+      window.kakao.maps.event.addListener(newMap, 'click', () => {
+        setSelectedShopId(null);
+      });
+    });
+  }, []); // Run once on mount
+
+  // 4. Update Markers when shops or selectedShopId changes
+  useEffect(() => {
+    if (!map || !window.kakao) return;
+
+    // Clear existing markers/overlays
+    overlaysRef.current.forEach(overlay => overlay.setMap(null));
+    overlaysRef.current = [];
+
+    shops.forEach((shop) => {
+      const isSelected = selectedShopId === shop.id;
+      const content = getMarkerContent(shop, isSelected);
+      const position = new window.kakao.maps.LatLng(shop.location.lat, shop.location.lng);
+
+      const customOverlay = new window.kakao.maps.CustomOverlay({
+        position: position,
+        content: content,
+        yAnchor: 1,
+        zIndex: isSelected ? 2 : 1
+      });
+
+      customOverlay.setMap(map);
+      overlaysRef.current.push(customOverlay);
+
+      // Add click event logic to the DOM element created by string
+      // Note: Kakao CustomOverlay string content is hard to bind events to directly in React way.
+      // We rely on the wrapper div in getMarkerContent having a click handler? 
+      // Actually, standard way with string HTML is tricky. 
+      // Let's create a DOM element instead of string for better control if possible, 
+      // OR simpler: use an invisible marker on top to catch clicks.
+      
+      // Hack for CustomOverlay click: 
+      // The content string needs to be clickable. Since we insert string, we can't easily attach React handler.
+      // Workaround: Add a transparent Marker at the same spot to handle clicks.
+      const marker = new window.kakao.maps.Marker({
+        position: position,
+        opacity: 0.01, // Invisible but clickable
+        zIndex: 3
+      });
+      
+      marker.setMap(map);
+      overlaysRef.current.push(marker); // Store in same ref to clear later
+
+      window.kakao.maps.event.addListener(marker, 'click', () => {
+        setSelectedShopId(shop.id);
+        map.panTo(position);
+      });
+    });
+
+  }, [map, shops, selectedShopId]);
+
+  // 5. Geolocation
+  const handleMyLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const userPos = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setCurrentLocation(userPos);
-          setMapCenter(userPos);
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const loc = { lat, lng };
+          setMyLocation(loc);
+          setMapCenter(loc);
+          if (map) {
+            const moveLatLon = new window.kakao.maps.LatLng(lat, lng);
+            map.panTo(moveLatLon);
+          }
         },
-        () => {
-          // Default to Seoul
+        (err) => {
+          alert("위치 정보를 가져올 수 없습니다.");
         }
       );
     }
-  }, [user]);
-
-  // Fetch reviews
-  useEffect(() => {
-    if (selectedStore) {
-      const fetchReviews = async () => {
-        setReviewsLoading(true);
-        try {
-            const data = await getReviews(selectedStore.id);
-            setReviews(data);
-        } catch (error: any) {
-            console.error("Error fetching reviews:", error);
-        } finally {
-            setReviewsLoading(false);
-        }
-      };
-      fetchReviews();
-    } else {
-      setReviews([]);
-    }
-  }, [selectedStore]);
-
-  const handleMapClick = (latlng: LatLng) => {
-    if (isAddingStore) {
-      setNewStoreLocation(latlng);
-      // Ensure the panel is open when a user selects a location
-      setIsMobileListOpen(true);
-    }
   };
 
-  const handleLocationUpdate = (latlng: LatLng) => {
-    setNewStoreLocation(latlng);
-    setMapCenter(latlng);
-  };
-
-  const handleSelectStore = (store: Store) => {
-    setSelectedStore(store);
-    setMapCenter({ lat: store.lat, lng: store.lng });
-    setIsAddingStore(false);
-    setIsEditingStore(false);
-    setNewStoreLocation(null);
-    setIsMobileListOpen(true); // Automatically open panel when store selected
-  };
-
-  const handleMarkerClick = (store: Store) => {
-    if (!isAddingStore) {
-      handleSelectStore(store);
-    }
-  };
-
-  const handleAddStoreSubmit = async (data: Omit<Store, 'id' | 'createdAt' | 'lat' | 'lng' | 'userId'> & { imageFile?: File }) => {
-    if (!newStoreLocation || !user) return;
+  // 6. Actions
+  const handleLogin = async () => {
     try {
-      let imageUrl = '';
-      if (data.imageFile) {
-        imageUrl = await uploadImage(data.imageFile);
-      }
-
-      const storeData = {
-        name: data.name,
-        description: data.description,
-        category: data.category,
-        priceInfo: data.priceInfo,
-        paymentMethods: data.paymentMethods,
-        imageUrl: imageUrl, // Add image URL
-        lat: newStoreLocation.lat,
-        lng: newStoreLocation.lng,
-        userId: user.uid
-      };
-      
-      const newId = await addStore(storeData);
-      
-      const newStore: Store = {
-        id: newId,
-        ...storeData,
-        createdAt: Date.now(),
-      };
-      setStores([...stores, newStore]);
-      handleSelectStore(newStore);
-    } catch (e: any) {
-      console.error(e);
-      if (e.code === 'permission-denied' || e.message?.includes('Missing or insufficient permissions')) {
-         alert("데이터베이스 권한 오류입니다. Firebase Console에서 Firestore 규칙을 확인해주세요.");
-         setPermissionError(true);
-      } else {
-         alert("가게 등록에 실패했습니다.");
-      }
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error(error);
     }
   };
 
-  const handleUpdateStoreSubmit = async (data: Partial<Store>) => {
-      if (!selectedStore) return;
-      try {
-          await updateStore(selectedStore.id, data);
-          
-          const updatedStore = { ...selectedStore, ...data };
-          setStores(stores.map(s => s.id === updatedStore.id ? updatedStore : s));
-          setSelectedStore(updatedStore);
-          setIsEditingStore(false);
-          alert("수정이 완료되었습니다.");
-      } catch (e) {
-          console.error(e);
-          alert("수정에 실패했습니다.");
-      }
+  const handleLogout = () => signOut(auth);
+
+  const handleAddShop = (data: { name: string; description: string; types: ShopType[]; price: string }) => {
+    if (!user) return;
+    
+    // Get current map center for the new shop
+    // If user panned the map, use that.
+    const newShopRef = push(ref(db, 'shops'));
+    const newShop: Shop = {
+      id: newShopRef.key!,
+      name: data.name,
+      description: data.description,
+      location: mapCenter, // Use current center of map
+      types: data.types,
+      createdAt: Date.now(),
+      reporterId: user.uid,
+      price: data.price,
+      isOpen: true,
+    };
+    set(newShopRef, newShop);
+    // Move map slightly to show the new pin clearly
+    setSelectedShopId(newShopRef.key);
   };
 
-  const handleDeleteStore = async (store: Store) => {
-      if (!window.confirm(`'${store.name}' 가게를 정말 삭제하시겠습니까?`)) return;
-      try {
-          await deleteStore(store.id);
-          setStores(stores.filter(s => s.id !== store.id));
-          setSelectedStore(null);
-          alert("삭제되었습니다.");
-      } catch (e) {
-          console.error(e);
-          alert("삭제에 실패했습니다.");
-      }
-  };
-
-  const handleAddReviewSubmit = async (data: Omit<Review, 'id' | 'createdAt' | 'storeId' | 'userId'>) => {
-    if (!selectedStore || !user) return;
-    try {
-      const reviewData = {
-        ...data,
-        storeId: selectedStore.id,
-        userId: user.uid
-      };
-      
-      const newReviewId = await addReview(reviewData);
-      
-      const newReview: Review = {
-        id: newReviewId,
-        ...reviewData,
-        createdAt: Date.now()
-      };
-      // Optimistically update UI
-      setReviews([newReview, ...reviews]);
-      alert("소중한 후기가 등록되었습니다!");
-    } catch (e: any) {
-      console.error(e);
-      alert("리뷰 등록에 실패했습니다.");
+  const handleDeleteShop = (shopId: string) => {
+    if (window.confirm("정말 이 가게를 삭제하시겠습니까?")) {
+      remove(ref(db, `shops/${shopId}`));
+      setSelectedShopId(null);
     }
   };
 
-  const handleUpdateReview = async (reviewId: string, data: Partial<Review>) => {
-    try {
-      await updateReview(reviewId, data);
-      setReviews(reviews.map(r => r.id === reviewId ? { ...r, ...data } : r));
-      alert("후기가 수정되었습니다.");
-    } catch (e) {
-      console.error(e);
-      alert("후기 수정에 실패했습니다.");
-    }
-  };
-
-  const handleDeleteReview = async (reviewId: string) => {
-    if (!window.confirm("정말 이 후기를 삭제하시겠습니까?")) return;
-    try {
-      await deleteReview(reviewId);
-      setReviews(reviews.filter(r => r.id !== reviewId));
-      alert("후기가 삭제되었습니다.");
-    } catch (e) {
-      console.error(e);
-      alert("후기 삭제에 실패했습니다.");
-    }
-  };
-
-  const handleLogout = () => {
-    signOut(auth);
-  };
-
-  const closeMobilePanel = () => {
-    setIsMobileListOpen(false);
-  };
-
-  if (authLoading) {
-    return (
-      <div className="w-full h-screen flex items-center justify-center bg-bung-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-bung-600"></div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <AuthForm />;
-  }
-
-  // Determine if sidebar should be visible on mobile
-  // Visible if: Adding store OR Selected store OR User explicitly opened list
-  const isMobileSidebarVisible = isAddingStore || selectedStore || isMobileListOpen;
+  // Get Selected Shop Details
+  const selectedShop = shops.find(s => s.id === selectedShopId);
 
   return (
-    <div className="relative w-full h-screen overflow-hidden flex flex-col md:flex-row bg-bung-50">
+    <div className="relative w-full h-screen overflow-hidden bg-orange-50">
       
-      {/* Permission Error Banner */}
-      {permissionError && (
-        <div className="absolute top-0 left-0 w-full bg-red-600 text-white z-[60] p-3 flex items-center justify-center shadow-lg animate-bounce">
-            <AlertTriangle className="w-6 h-6 mr-2" />
-            <div className="text-sm font-medium">
-                <strong>데이터베이스 권한 오류:</strong> Firebase Console 규칙 확인 필요
-            </div>
-            <button onClick={() => window.location.reload()} className="ml-4 underline text-xs">새로고침</button>
+      {/* Map Container */}
+      <div ref={mapContainerRef} className="absolute inset-0 z-0 w-full h-full" />
+
+      {/* Check for Kakao Map Error */}
+      {!window.kakao && (
+        <div className="absolute inset-0 flex items-center justify-center bg-orange-100 z-50 text-center p-4">
+          <div>
+            <h1 className="text-2xl font-bold text-red-500 mb-2">지도 로딩 실패</h1>
+            <p className="text-gray-700">index.html 파일에서 Kakao Map API Key를 설정해주세요.</p>
+          </div>
         </div>
       )}
 
-      {/* Mobile Header */}
-      <div className="md:hidden bg-bung-300 p-4 flex items-center justify-between shadow-md z-20 shrink-0">
-        <div className="flex items-center gap-2 text-bung-900 font-bold text-xl" onClick={() => window.location.reload()}>
-          <Fish className="w-8 h-8 fill-bung-700" />
-          <span>붕어빵지도</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Mobile PWA Install Button */}
-          {deferredPrompt && (
-            <button
-              onClick={() => setShowInstallModal(true)}
-              className="p-2 rounded-full bg-bung-100 text-bung-800 hover:bg-bung-200 transition-colors"
-              title="앱 설치하기"
-            >
-              <Download className="w-5 h-5" />
-            </button>
-          )}
-          <button
-            onClick={handleLogout}
-            className="p-2 rounded-full bg-bung-200 text-bung-800 hover:bg-bung-400 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Sidebar / Bottom Sheet */}
-      <div className={`absolute md:relative z-30 md:z-0 w-full md:w-[400px] 
-        h-[60vh] md:h-full 
-        bottom-0 md:bottom-auto 
-        bg-white shadow-2xl md:shadow-none
-        transition-transform duration-300 ease-in-out transform 
-        ${isMobileSidebarVisible ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}
-        md:translate-x-0 flex flex-col border-r border-bung-200 rounded-t-2xl md:rounded-none
-      `}>
-        {/* Mobile Drag Handle Indicator */}
-        <div className="md:hidden w-full flex justify-center pt-3 pb-1" onClick={closeMobilePanel}>
-            <div className="w-12 h-1.5 bg-gray-300 rounded-full cursor-pointer"></div>
-        </div>
-
-        {/* Desktop Header */}
-        <div className="hidden md:flex p-6 bg-bung-300 items-center justify-between shadow-sm shrink-0">
-          <div className="flex items-center gap-3">
-            <Fish className="w-10 h-10 text-bung-900 fill-bung-700" />
-            <h1 className="text-2xl font-black text-bung-900 tracking-tight">붕어빵지도</h1>
+      {/* Top Navigation / Auth */}
+      <div className="absolute top-0 left-0 right-0 z-20 p-4 pointer-events-none">
+        <div className="flex justify-between items-start max-w-2xl mx-auto pointer-events-auto">
+          <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-lg border border-orange-100">
+            <h1 className="text-xl font-bold text-amber-600 font-hand flex items-center gap-2">
+              <span className="text-2xl">🐟</span> 붕어빵 대동여지도
+            </h1>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Desktop PWA Install Button */}
-            {deferredPrompt && (
-               <button
-               onClick={() => setShowInstallModal(true)}
-               className="flex items-center gap-2 px-3 py-2 rounded-full bg-bung-100 text-bung-900 hover:bg-bung-200 font-bold text-xs transition-colors mr-2"
-             >
-               <Download className="w-4 h-4" />
-               앱 설치
-             </button>
+          
+          <div className="flex gap-2">
+            {!user ? (
+              <Button onClick={handleLogin} size="sm" className="bg-gray-900 text-white shadow-lg">
+                <UserIcon size={16} /> 로그인
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2 bg-white/90 backdrop-blur-md p-1.5 rounded-full shadow-lg border border-orange-100">
+                <img src={user.photoURL || 'https://picsum.photos/40/40'} alt="Profile" className="w-8 h-8 rounded-full border border-gray-200" />
+                <button onClick={handleLogout} className="p-2 text-gray-500 hover:text-red-500 transition-colors rounded-full hover:bg-red-50">
+                  <LogOut size={16} />
+                </button>
+              </div>
             )}
-            <button
-                onClick={handleLogout}
-                className="p-2 rounded-full hover:bg-bung-400/50 text-bung-900 transition-colors"
-                title="로그아웃"
-            >
-                <LogOut className="w-5 h-5" />
-            </button>
           </div>
         </div>
+      </div>
 
-        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar pb-24 md:pb-4">
-          {loading ? (
-             <div className="flex justify-center items-center h-40">
-               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-bung-600"></div>
-             </div>
-          ) : isAddingStore ? (
-            <StoreForm 
-              locationSelected={!!newStoreLocation} 
-              onSubmit={handleAddStoreSubmit} 
-              onCancel={() => setIsAddingStore(false)} 
-              onLocationUpdate={handleLocationUpdate}
-            />
-          ) : isEditingStore && selectedStore ? (
-            <StoreForm
-              locationSelected={true}
-              initialData={selectedStore}
-              onSubmit={handleUpdateStoreSubmit}
-              onCancel={() => setIsEditingStore(false)}
-            />
-          ) : selectedStore ? (
-            <StoreDetail 
-              store={selectedStore} 
-              reviews={reviews} 
-              isLoading={reviewsLoading}
-              onBack={() => {
-                  setSelectedStore(null);
-                  setIsMobileListOpen(true);
-              }}
-              onAddReview={handleAddReviewSubmit}
-              onUpdateReview={handleUpdateReview}
-              onDeleteReview={handleDeleteReview}
-              currentUser={user}
-              onEdit={() => setIsEditingStore(true)}
-              onDelete={handleDeleteStore}
-            />
-          ) : (
-            <Sidebar 
-                stores={stores} 
-                onSelectStore={handleSelectStore} 
-                onCloseMobile={() => setIsMobileListOpen(false)}
-            />
-          )}
-        </div>
+      {/* Floating Action Buttons */}
+      <div className="absolute right-4 bottom-24 sm:bottom-10 z-20 flex flex-col gap-3">
+        <button 
+          onClick={handleMyLocation}
+          className="bg-white p-3 rounded-full shadow-lg text-gray-600 hover:text-amber-600 active:scale-90 transition-all border border-gray-100"
+          aria-label="Find my location"
+        >
+          <Navigation size={24} />
+        </button>
 
-        {/* Desktop Add Button */}
-        {!isAddingStore && !selectedStore && (
-          <div className="hidden md:block p-4 border-t border-bung-100 bg-bung-50 shrink-0">
-             <button
-              onClick={() => setIsAddingStore(true)}
-              className="w-full py-4 bg-bung-600 hover:bg-bung-700 text-white rounded-xl shadow-lg font-bold text-lg flex items-center justify-center gap-2 transition-transform hover:scale-[1.02]"
-            >
-              <Plus className="w-6 h-6" />
-              가게 제보하기
-            </button>
-          </div>
+        {user && (
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-amber-500 p-4 rounded-full shadow-lg shadow-amber-500/30 text-white active:scale-90 transition-all hover:bg-amber-600 animate-bounce-slight"
+            aria-label="Add Shop"
+          >
+            <Plus size={28} strokeWidth={3} />
+          </button>
         )}
       </div>
 
-      {/* Map Area */}
-      <div className="flex-1 relative h-full">
-        {isAddingStore && !newStoreLocation && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-bung-900 text-white px-6 py-3 rounded-full shadow-xl font-medium animate-bounce whitespace-nowrap">
-            지도를 클릭하거나 사진을 찍어주세요!
-          </div>
-        )}
+      {/* Center Marker Indicator (when moving map to add) */}
+      {isModalOpen && (
+        <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
+           {/* This is simulated visually, the actual modal opens on top */}
+        </div>
+      )}
 
-        <KakaoMap
-          center={mapCenter}
-          stores={stores}
-          isAddingMode={isAddingStore}
-          selectedLocation={newStoreLocation}
-          userLocation={currentLocation}
-          onMapClick={handleMapClick}
-          onMarkerClick={handleMarkerClick}
-        />
-        
-        {/* Mobile Floating Action Buttons */}
-        <div className="md:hidden absolute bottom-6 left-0 right-0 px-4 z-20 flex justify-between items-end pointer-events-none">
-           {/* List Toggle Button */}
-           {!isAddingStore && (
-               <button
-               onClick={() => {
-                   setIsMobileListOpen(!isMobileSidebarVisible); 
-                   if(isMobileSidebarVisible && selectedStore) {
-                       setSelectedStore(null); 
-                   }
-               }}
-               className="pointer-events-auto bg-white text-bung-900 px-5 py-3 rounded-full shadow-lg font-bold flex items-center gap-2 border border-bung-100 active:scale-95 transition-transform"
-             >
-               {isMobileSidebarVisible ? (
-                  <>
-                    <MapIcon className="w-5 h-5" /> 지도 보기
-                  </>
-               ) : (
-                  <>
-                    <List className="w-5 h-5" /> 목록 보기
-                  </>
-               )}
-             </button>
-           )}
-
-           {/* Add Store Button */}
-           {!isAddingStore && (
-             <button
-               onClick={() => {
-                 setIsAddingStore(true);
-                 setSelectedStore(null);
-                 setIsMobileListOpen(true); // Ensure panel opens
-               }}
-               className="pointer-events-auto w-14 h-14 bg-bung-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-bung-700 focus:outline-none focus:ring-4 focus:ring-bung-300 active:scale-95 transition-transform"
-             >
-               <Plus className="w-8 h-8" />
-             </button>
-           )}
-           
-           {/* Cancel Add Mode Button */}
-           {isAddingStore && (
-              <button
-                onClick={() => setIsAddingStore(false)}
-                className="pointer-events-auto w-full bg-red-500 text-white py-3 rounded-full shadow-lg font-bold"
-              >
-                취소하기
+      {/* Bottom Sheet / Shop Details */}
+      {selectedShop && (
+        <div className="absolute bottom-0 left-0 right-0 z-30 p-4 animate-slide-up">
+          <div className="bg-white w-full max-w-2xl mx-auto rounded-3xl p-6 shadow-2xl border border-gray-100 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-amber-400"></div>
+            
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 font-hand flex items-center gap-2">
+                  {selectedShop.name}
+                  {selectedShop.types.includes(ShopType.CREAM) && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-sans">슈크림</span>}
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">{selectedShop.description || "상세 설명이 없습니다."}</p>
+              </div>
+              <button onClick={() => setSelectedShopId(null)} className="text-gray-400 hover:text-gray-600 p-1">
+                <Plus size={24} className="rotate-45" />
               </button>
-           )}
-        </div>
-      </div>
+            </div>
 
-      {/* Install PWA Modal - High z-index to show above everything */}
-      {showInstallModal && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center px-4 pb-6 sm:pb-0">
-          <div 
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
-            onClick={() => setShowInstallModal(false)}
-          />
-          <div className="relative bg-white w-full max-w-sm p-6 rounded-2xl shadow-2xl transform transition-all scale-100 animate-fade-in-up">
-            <div className="flex flex-col items-center text-center">
-               <div className="w-16 h-16 bg-bung-100 rounded-2xl flex items-center justify-center mb-4 shadow-inner">
-                  <Fish className="w-10 h-10 text-bung-600 fill-bung-600" />
-               </div>
-               
-               <h3 className="text-xl font-bold text-gray-900 mb-2">앱 설치하고 바로가기</h3>
-               <p className="text-gray-600 mb-6 leading-relaxed text-sm">
-                 홈 화면에 <strong>붕어빵지도</strong>를 추가하면<br/>
-                 내 주변 붕어빵을 더 빠르게 찾을 수 있어요!
-               </p>
-               
-               <button 
-                onClick={handleInstallApp}
-                className="w-full py-3.5 bg-bung-600 text-white rounded-xl font-bold text-lg shadow-lg shadow-bung-200 hover:bg-bung-700 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
-               >
-                 <Download className="w-5 h-5" />
-                 앱 내려받기
-               </button>
-               
-               <button 
-                onClick={() => setShowInstallModal(false)}
-                className="mt-4 text-sm text-gray-400 font-medium hover:text-gray-600 underline decoration-gray-300 underline-offset-4"
-               >
-                 나중에 할게요
-               </button>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="bg-orange-50 p-3 rounded-xl">
+                <p className="text-xs text-orange-500 font-semibold mb-1">판매 메뉴</p>
+                <div className="flex flex-wrap gap-1">
+                  {selectedShop.types.map(t => (
+                    <span key={t} className="text-sm text-gray-700 bg-white px-2 py-0.5 rounded-md shadow-sm border border-orange-100">{t}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-gray-50 p-3 rounded-xl">
+                <p className="text-xs text-gray-500 font-semibold mb-1">가격</p>
+                <p className="text-sm text-gray-700 font-medium">{selectedShop.price || "가격 정보 없음"}</p>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center mt-2 border-t border-gray-100 pt-4">
+              <span className="text-xs text-gray-400">
+                제보자: {selectedShop.reporterId.slice(0, 5)}***
+              </span>
+              
+              {user && (user.isAdmin || user.uid === selectedShop.reporterId) && (
+                <button 
+                  onClick={() => handleDeleteShop(selectedShop.id)}
+                  className="flex items-center gap-1 text-red-500 text-sm hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <Trash2 size={14} /> 삭제하기
+                </button>
+              )}
             </div>
           </div>
         </div>
       )}
 
+      {/* Floating Instructions when no shop selected */}
+      {!selectedShop && !isLoading && (
+         <div className="absolute bottom-8 left-0 right-0 z-10 pointer-events-none text-center px-4">
+           <span className="inline-block bg-white/80 backdrop-blur px-4 py-2 rounded-full text-sm font-medium text-amber-800 shadow-sm border border-white/50 animate-pulse">
+             {user ? "지도를 움직여 + 버튼으로 붕어빵을 제보해주세요!" : "로그인하고 숨겨진 붕어빵 맛집을 공유해보세요!"}
+           </span>
+         </div>
+      )}
+
+      <ShopModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleAddShop}
+        location={mapCenter}
+      />
     </div>
   );
-}
+};
+
+export default App;

@@ -1,35 +1,34 @@
-export interface Store {
+export interface Location {
+  lat: number;
+  lng: number;
+}
+
+export enum ShopType {
+  BEAN = '팥',
+  CREAM = '슈크림',
+  PIZZA = '피자/치즈',
+  MINI = '미니',
+  OTHER = '기타'
+}
+
+export interface Shop {
   id: string;
   name: string;
   description: string;
-  lat: number;
-  lng: number;
-  category: 'redbean' | 'shucream' | 'pizza' | 'other';
-  priceInfo: string;
-  paymentMethods: string[]; // e.g. ['cash', 'card', 'transfer']
+  location: Location;
+  types: ShopType[];
   createdAt: number;
-  userId: string;
-  imageUrl?: string;
+  reporterId: string; // User ID who reported
+  price?: string;
+  isOpen?: boolean;
 }
 
-export interface Review {
-  id: string;
-  storeId: string;
-  nickname: string;
-  rating: number;
-  comment: string;
-  createdAt: number;
-  userId: string;
+export interface User {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  isAdmin: boolean;
 }
 
-export interface LatLng {
-  lat: number;
-  lng: number;
-}
-
-// Global declaration for Kakao Maps
-declare global {
-  interface Window {
-    kakao: any;
-  }
-}
+export const ADMIN_EMAIL = "acehwan69@gmail.com";

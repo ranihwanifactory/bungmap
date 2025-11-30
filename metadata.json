@@ -1,8 +1,7 @@
 {
-  "name": "붕어빵지도",
-  "description": "내 주변 붕어빵 가게 위치 찾기 및 공유 서비스. 팥붕, 슈붕, 잉어빵 지도.",
+  "name": "붕어빵 대동여지도",
+  "description": "내 주변의 따뜻한 붕어빵 가게를 찾고 공유하는 귀여운 지도 서비스입니다.",
   "requestFramePermissions": [
-    "geolocation",
-    "camera"
+    "geolocation"
   ]
 }
