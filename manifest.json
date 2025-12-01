@@ -1,0 +1,21 @@
+{
+  "short_name": "붕어빵지도",
+  "name": "붕어빵 대동여지도",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3081/3081840.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3081/3081840.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#FFF7ED",
+  "background_color": "#FFF7ED",
+  "orientation": "portrait"
+}
