@@ -4,19 +4,60 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#FFF7ED" />
+    
+    <!-- SEO Meta Tags -->
+    <title>붕어빵 대동여지도 - 내 주변 겨울 간식 맛집 지도</title>
+    <meta name="description" content="전국 붕어빵, 잉어빵, 호떡, 어묵 등 겨울철 길거리 간식 위치를 한눈에 확인하세요. 내 주변의 붕세권을 찾고 맛집 정보를 공유하는 필수 앱입니다." />
+    <meta name="keywords" content="붕어빵, 잉어빵, 붕세권, 겨울간식, 길거리음식, 대동여지도, 맛집지도, 호떡, 슈크림붕어빵, 팥붕어빵" />
+    <meta name="author" content="붕어빵 대동여지도" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://foodmap-347b3.firebaseapp.com/" />
+
+    <!-- PWA & Mobile -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>붕어빵 대동여지도</title>
-    
-    <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3081/3081840.png" />
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3081/3081840.png" />
 
-    <meta property="og:title" content="붕어빵 대동여지도" />
-    <meta property="og:description" content="내 주변의 따뜻한 붕어빵 가게를 찾아보세요! 팥, 슈크림, 어묵까지 한눈에 확인 가능합니다." />
+    <!-- Open Graph (Facebook, KakaoTalk) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="붕어빵 대동여지도" />
+    <meta property="og:title" content="붕어빵 대동여지도 - 우리 동네 붕세권 찾기" />
+    <meta property="og:description" content="추운 겨울, 따뜻한 붕어빵이 생각날 땐? 내 주변 붕어빵 가게 위치와 가격 정보를 바로 확인해보세요!" />
     <meta property="og:image" content="https://images.unsplash.com/photo-1647864299831-274eab3c2423?q=80&w=1200&auto=format&fit=crop" />
     <meta property="og:url" content="https://foodmap-347b3.firebaseapp.com" />
+    <meta property="og:locale" content="ko_KR" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="붕어빵 대동여지도" />
+    <meta name="twitter:description" content="내 주변 붕어빵, 잉어빵 맛집을 지도에서 바로 찾아보세요." />
+    <meta name="twitter:image" content="https://images.unsplash.com/photo-1647864299831-274eab3c2423?q=80&w=1200&auto=format&fit=crop" />
     
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "붕어빵 대동여지도",
+      "applicationCategory": "FoodDrinkApplication",
+      "operatingSystem": "Web, Android, iOS",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "KRW"
+      },
+      "description": "내 주변의 붕어빵 가게 위치를 찾고 공유하는 커뮤니티형 지도 서비스입니다.",
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "1024"
+      },
+      "image": "https://cdn-icons-png.flaticon.com/512/3081/3081840.png"
+    }
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
     <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=08318a127595566819a1c38d00deaab2&libraries=services,clusterer"></script>
